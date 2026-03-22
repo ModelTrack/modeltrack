@@ -1,0 +1,39 @@
+{
+  "rules": [
+    {
+      "name": "budget-downgrade-anthropic",
+      "description": "Downgrade Opus/Sonnet to Haiku when team budget is >70%",
+      "trigger": "budget_percent_above",
+      "threshold": 70,
+      "from_models": ["claude-opus-4-6", "claude-sonnet-4-6"],
+      "to_model": "claude-haiku-4-5",
+      "provider": "anthropic",
+      "action": "downgrade",
+      "enabled": true
+    },
+    {
+      "name": "budget-downgrade-openai",
+      "description": "Downgrade GPT-4o to GPT-4o-mini when budget >70%",
+      "trigger": "budget_percent_above",
+      "threshold": 70,
+      "from_models": ["gpt-4o", "gpt-4.1"],
+      "to_model": "gpt-4o-mini",
+      "provider": "openai",
+      "action": "downgrade",
+      "enabled": true
+    },
+    {
+      "name": "critical-budget-block",
+      "description": "Block expensive models when budget >90%",
+      "trigger": "budget_percent_above",
+      "threshold": 90,
+      "from_models": ["claude-opus-4-6", "gpt-4o"],
+      "to_model": "",
+      "provider": "",
+      "action": "block_expensive",
+      "enabled": true
+    }
+  ],
+  "opt_out_header": "X-CostTrack-No-Route",
+  "fallback_behavior": "pass_through"
+}

@@ -30,6 +30,9 @@ type CostEvent struct {
 	SessionID        string  `json:"session_id,omitempty"`
 	TraceID          string  `json:"trace_id,omitempty"`
 	CacheHit         bool    `json:"cache_hit,omitempty"`
+	RoutedFrom       string  `json:"routed_from,omitempty"`
+	RoutedTo         string  `json:"routed_to,omitempty"`
+	RoutingRule      string  `json:"routing_rule,omitempty"`
 	TokenSummary     string  `json:"token_summary"`
 }
 

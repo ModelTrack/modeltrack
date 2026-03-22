@@ -267,6 +267,34 @@ func (bt *BudgetTracker) CheckBudget(team, app string) BudgetResult {
 	return result
 }
 
+// GetBudgetPercent returns the current budget utilization as a fraction (0.0 to 1.0+).
+// Returns 0.0 if no budget is set for the team/app.
+func (bt *BudgetTracker) GetBudgetPercent(team, app string) float64 {
+	bt.mu.RLock()
+	defer bt.mu.RUnlock()
+
+	// Find matching budget entry (same logic as CheckBudget).
+	var match *BudgetEntry
+	for i := range bt.budgets {
+		b := &bt.budgets[i]
+		if b.Team == team && b.App == app && app != "" {
+			match = b
+			break
+		}
+		if b.Team == team && b.App == "" && match == nil {
+			match = b
+		}
+	}
+
+	if match == nil || match.MonthlyLimit <= 0 {
+		return 0.0
+	}
+
+	key := budgetKey(match.Team, match.App)
+	currentSpend := bt.spend[key]
+	return currentSpend / match.MonthlyLimit
+}
+
 // FormatWarningHeader returns the header value for a budget warning.
 func (r BudgetResult) FormatWarningHeader() string {
 	pctStr := fmt.Sprintf("%.0f", r.Percent*100)

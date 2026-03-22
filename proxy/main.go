@@ -36,6 +36,9 @@ func main() {
 	budgetsFile := cfg.DataDir + "/budgets.json"
 	budgetTracker := NewBudgetTracker(budgetsFile, cfg.CostEventsFile)
 
+	// Initialize the model router.
+	modelRouter := NewModelRouter(cfg.RoutingFile)
+
 	// Set up the HTTP mux.
 	mux := http.NewServeMux()
 
@@ -49,8 +52,11 @@ func main() {
 	// Cache stats endpoint.
 	mux.HandleFunc("/cache/stats", CacheStatsHandler(responseCache))
 
+	// Routing stats endpoint.
+	mux.HandleFunc("/routing/stats", RoutingStatsHandler(modelRouter))
+
 	// Proxy handler for LLM API routes.
-	proxyHandler := NewProxyHandler(anthropicAdapter, openaiAdapter, eventLogger, budgetTracker, responseCache)
+	proxyHandler := NewProxyHandler(anthropicAdapter, openaiAdapter, eventLogger, budgetTracker, responseCache, modelRouter)
 	mux.Handle("/v1/", proxyHandler)
 
 	// Wrap with CORS middleware.
@@ -72,6 +78,7 @@ func main() {
 	log.Printf("  Budgets file:   %s", budgetsFile)
 	log.Printf("  Providers:      anthropic (%s), openai (%s)", cfg.AnthropicBaseURL, cfg.OpenAIBaseURL)
 	log.Printf("  Cache:          enabled=%v max_entries=%d ttl=%ds", cfg.CacheEnabled, cfg.CacheMaxEntries, cfg.CacheTTLSeconds)
+	log.Printf("  Routing file:   %s", cfg.RoutingFile)
 
 	// Graceful shutdown.
 	errCh := make(chan error, 1)
@@ -101,6 +108,9 @@ func main() {
 
 	// Close the response cache.
 	responseCache.Close()
+
+	// Close the model router.
+	modelRouter.Close()
 
 	// Close the budget tracker.
 	budgetTracker.Close()

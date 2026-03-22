@@ -21,16 +21,18 @@ type ProxyHandler struct {
 	logger    *EventLogger
 	budget    *BudgetTracker
 	cache     *ResponseCache
+	router    *ModelRouter
 }
 
-// NewProxyHandler creates a new handler with the given adapters, logger, budget tracker, and cache.
-func NewProxyHandler(anthropic *adapters.AnthropicAdapter, openai *adapters.OpenAIAdapter, logger *EventLogger, budget *BudgetTracker, cache *ResponseCache) *ProxyHandler {
+// NewProxyHandler creates a new handler with the given adapters, logger, budget tracker, cache, and router.
+func NewProxyHandler(anthropic *adapters.AnthropicAdapter, openai *adapters.OpenAIAdapter, logger *EventLogger, budget *BudgetTracker, cache *ResponseCache, router *ModelRouter) *ProxyHandler {
 	return &ProxyHandler{
 		anthropic: anthropic,
 		openai:    openai,
 		logger:    logger,
 		budget:    budget,
 		cache:     cache,
+		router:    router,
 	}
 }
 
@@ -112,12 +114,61 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 	}
 	r.Body.Close()
 
-	// Parse fields needed for caching.
+	// Parse fields needed for caching and routing.
 	var fields llmRequestFields
 	if err := json.Unmarshal(bodyBytes, &fields); err != nil {
 		log.Printf("ERROR: parsing request body: %v", err)
 		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
 		return
+	}
+
+	// --- Model routing ---
+	var routingDecision RoutingDecision
+	if h.router != nil && !h.router.ShouldSkipRouting(r.Header.Get(h.router.GetOptOutHeader())) {
+		budgetPct := 0.0
+		if h.budget != nil && team != "" {
+			budgetPct = h.budget.GetBudgetPercent(team, appID)
+		}
+
+		routingDecision = h.router.Route("anthropic", fields.Model, team, appID, budgetPct)
+
+		if routingDecision.Routed {
+			if routingDecision.Action == "block_expensive" {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusTooManyRequests)
+				msg := fmt.Sprintf(
+					`{"error":{"type":"model_blocked","message":"Expensive model blocked: team at %.0f%% of budget. Use %s instead."}}`,
+					budgetPct*100, suggestCheapModel("anthropic"))
+				w.Write([]byte(msg))
+				return
+			}
+
+			// Downgrade: rewrite the model in the request body.
+			var bodyMap map[string]interface{}
+			if err := json.Unmarshal(bodyBytes, &bodyMap); err != nil {
+				log.Printf("ERROR: re-parsing request body for routing: %v", err)
+				http.Error(w, `{"error":"failed to process request body"}`, http.StatusInternalServerError)
+				return
+			}
+			bodyMap["model"] = routingDecision.NewModel
+			newBody, err := json.Marshal(bodyMap)
+			if err != nil {
+				log.Printf("ERROR: re-marshaling request body for routing: %v", err)
+				http.Error(w, `{"error":"failed to process request body"}`, http.StatusInternalServerError)
+				return
+			}
+			bodyBytes = newBody
+			fields.Model = routingDecision.NewModel
+
+			// Set routing response headers.
+			w.Header().Set("X-CostTrack-Routed", "true")
+			w.Header().Set("X-CostTrack-Original-Model", routingDecision.OriginalModel)
+			w.Header().Set("X-CostTrack-Routed-To", routingDecision.NewModel)
+			w.Header().Set("X-CostTrack-Route-Reason", routingDecision.Reason)
+
+			log.Printf("ROUTER: routed %s -> %s for team %q (rule: %s)",
+				routingDecision.OriginalModel, routingDecision.NewModel, team, routingDecision.RuleName)
+		}
 	}
 
 	cacheable := h.isCacheable(r, &fields)
@@ -151,6 +202,9 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 				SessionID:    sessionID,
 				TraceID:      traceID,
 				CacheHit:     true,
+				RoutedFrom:   routingDecision.OriginalModel,
+				RoutedTo:     routedToField(routingDecision),
+				RoutingRule:  routingDecision.RuleName,
 				TokenSummary: "cache_hit=true",
 			}
 			h.logger.Log(event)
@@ -254,10 +308,23 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 		CustomerTier:     customerTier,
 		SessionID:        sessionID,
 		TraceID:          traceID,
+		RoutedFrom:       routingDecision.OriginalModel,
+		RoutedTo:         routedToField(routingDecision),
+		RoutingRule:      routingDecision.RuleName,
 		TokenSummary:     summary,
 	}
 
 	h.logger.Log(event)
+
+	// Record estimated routing savings.
+	if routingDecision.Routed && routingDecision.Action == "downgrade" && h.router != nil {
+		originalCost := CalculateCost("anthropic", routingDecision.OriginalModel,
+			result.Usage.InputTokens, result.Usage.OutputTokens,
+			result.Usage.CacheReadTokens, result.Usage.CacheWriteTokens)
+		if originalCost > cost {
+			h.router.RecordSavings(originalCost - cost)
+		}
+	}
 
 	// Update budget tracker and add warning headers if needed.
 	if h.budget != nil && team != "" {
@@ -307,12 +374,61 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 	}
 	r.Body.Close()
 
-	// Parse fields needed for caching.
+	// Parse fields needed for caching and routing.
 	var fields llmRequestFields
 	if err := json.Unmarshal(bodyBytes, &fields); err != nil {
 		log.Printf("ERROR: parsing request body: %v", err)
 		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
 		return
+	}
+
+	// --- Model routing ---
+	var routingDecision RoutingDecision
+	if h.router != nil && !h.router.ShouldSkipRouting(r.Header.Get(h.router.GetOptOutHeader())) {
+		budgetPct := 0.0
+		if h.budget != nil && team != "" {
+			budgetPct = h.budget.GetBudgetPercent(team, appID)
+		}
+
+		routingDecision = h.router.Route("openai", fields.Model, team, appID, budgetPct)
+
+		if routingDecision.Routed {
+			if routingDecision.Action == "block_expensive" {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusTooManyRequests)
+				msg := fmt.Sprintf(
+					`{"error":{"type":"model_blocked","message":"Expensive model blocked: team at %.0f%% of budget. Use %s instead."}}`,
+					budgetPct*100, suggestCheapModel("openai"))
+				w.Write([]byte(msg))
+				return
+			}
+
+			// Downgrade: rewrite the model in the request body.
+			var bodyMap map[string]interface{}
+			if err := json.Unmarshal(bodyBytes, &bodyMap); err != nil {
+				log.Printf("ERROR: re-parsing request body for routing: %v", err)
+				http.Error(w, `{"error":"failed to process request body"}`, http.StatusInternalServerError)
+				return
+			}
+			bodyMap["model"] = routingDecision.NewModel
+			newBody, err := json.Marshal(bodyMap)
+			if err != nil {
+				log.Printf("ERROR: re-marshaling request body for routing: %v", err)
+				http.Error(w, `{"error":"failed to process request body"}`, http.StatusInternalServerError)
+				return
+			}
+			bodyBytes = newBody
+			fields.Model = routingDecision.NewModel
+
+			// Set routing response headers.
+			w.Header().Set("X-CostTrack-Routed", "true")
+			w.Header().Set("X-CostTrack-Original-Model", routingDecision.OriginalModel)
+			w.Header().Set("X-CostTrack-Routed-To", routingDecision.NewModel)
+			w.Header().Set("X-CostTrack-Route-Reason", routingDecision.Reason)
+
+			log.Printf("ROUTER: routed %s -> %s for team %q (rule: %s)",
+				routingDecision.OriginalModel, routingDecision.NewModel, team, routingDecision.RuleName)
+		}
 	}
 
 	cacheable := h.isCacheable(r, &fields)
@@ -346,6 +462,9 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 				SessionID:    sessionID,
 				TraceID:      traceID,
 				CacheHit:     true,
+				RoutedFrom:   routingDecision.OriginalModel,
+				RoutedTo:     routedToField(routingDecision),
+				RoutingRule:  routingDecision.RuleName,
 				TokenSummary: "cache_hit=true",
 			}
 			h.logger.Log(event)
@@ -445,10 +564,23 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 		CustomerTier: customerTier,
 		SessionID:    sessionID,
 		TraceID:      traceID,
+		RoutedFrom:   routingDecision.OriginalModel,
+		RoutedTo:     routedToField(routingDecision),
+		RoutingRule:  routingDecision.RuleName,
 		TokenSummary: summary,
 	}
 
 	h.logger.Log(event)
+
+	// Record estimated routing savings.
+	if routingDecision.Routed && routingDecision.Action == "downgrade" && h.router != nil {
+		originalCost := CalculateCost("openai", routingDecision.OriginalModel,
+			result.Usage.InputTokens, result.Usage.OutputTokens,
+			result.Usage.CacheReadTokens, result.Usage.CacheWriteTokens)
+		if originalCost > cost {
+			h.router.RecordSavings(originalCost - cost)
+		}
+	}
 
 	// Update budget tracker and add warning headers if needed.
 	if h.budget != nil && team != "" {
@@ -498,4 +630,34 @@ func CacheStatsHandler(cache *ResponseCache) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(stats)
 	}
+}
+
+// RoutingStatsHandler returns routing statistics as JSON.
+func RoutingStatsHandler(router *ModelRouter) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		stats := router.GetStats()
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(stats)
+	}
+}
+
+// suggestCheapModel returns a suggested cheap model for a given provider.
+func suggestCheapModel(provider string) string {
+	switch provider {
+	case "anthropic":
+		return "claude-haiku-4-5"
+	case "openai":
+		return "gpt-4o-mini"
+	default:
+		return "a cheaper model"
+	}
+}
+
+// routedToField returns the RoutedTo value for logging, or empty string if not routed.
+func routedToField(d RoutingDecision) string {
+	if d.Routed && d.Action == "downgrade" {
+		return d.NewModel
+	}
+	return ""
 }

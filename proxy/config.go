@@ -17,6 +17,7 @@ type Config struct {
 	CacheEnabled     bool
 	CacheMaxEntries  int
 	CacheTTLSeconds  int
+	RoutingFile      string
 }
 
 // LoadConfig reads configuration from environment variables with sensible defaults.
@@ -77,6 +78,11 @@ func LoadConfig() (*Config, error) {
 	}
 
 	cfg.CostEventsFile = cfg.DataDir + "/cost_events.jsonl"
+	cfg.RoutingFile = cfg.DataDir + "/routing.json"
+
+	if v := os.Getenv("ROUTING_FILE"); v != "" {
+		cfg.RoutingFile = v
+	}
 
 	// Ensure data directory exists.
 	if err := os.MkdirAll(cfg.DataDir, 0o755); err != nil {
