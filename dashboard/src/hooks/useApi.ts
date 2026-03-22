@@ -20,7 +20,12 @@ export function useApi<T>(url: string): {
         throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
       const json = await res.json();
-      setData(json);
+      // API wraps responses in { data: ..., error: ... }
+      if (json && typeof json === 'object' && 'data' in json) {
+        setData(json.data);
+      } else {
+        setData(json);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {

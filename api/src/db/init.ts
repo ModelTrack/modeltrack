@@ -1,40 +1,42 @@
-import { Database } from "duckdb-async";
+import Database from "better-sqlite3";
 import path from "path";
 
-let db: Database | null = null;
+let db: Database.Database | null = null;
 
-export async function initDatabase(): Promise<Database> {
+export function initDatabase(): Database.Database {
   const dbPath = process.env.DB_PATH || "../data/costtrack.db";
   const resolvedPath = path.resolve(__dirname, "../../", dbPath);
 
-  console.log(`Initializing DuckDB at: ${resolvedPath}`);
-  db = await Database.create(resolvedPath);
+  console.log(`Initializing SQLite at: ${resolvedPath}`);
+  db = new Database(resolvedPath);
 
-  await db.run(`
+  db.pragma("journal_mode = WAL");
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS cost_events (
-      event_id VARCHAR PRIMARY KEY,
-      timestamp TIMESTAMP NOT NULL,
-      provider VARCHAR NOT NULL,
-      model VARCHAR NOT NULL,
+      event_id TEXT PRIMARY KEY,
+      timestamp TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      model TEXT NOT NULL,
       input_tokens INTEGER DEFAULT 0,
       output_tokens INTEGER DEFAULT 0,
       cache_read_tokens INTEGER DEFAULT 0,
       cache_write_tokens INTEGER DEFAULT 0,
-      cost_usd DOUBLE NOT NULL,
+      cost_usd REAL NOT NULL,
       latency_ms INTEGER DEFAULT 0,
       status_code INTEGER DEFAULT 200,
-      is_streaming BOOLEAN DEFAULT FALSE,
-      app_id VARCHAR DEFAULT '',
-      team VARCHAR DEFAULT '',
-      feature VARCHAR DEFAULT '',
-      customer_tier VARCHAR DEFAULT ''
+      is_streaming INTEGER DEFAULT 0,
+      app_id TEXT DEFAULT '',
+      team TEXT DEFAULT '',
+      feature TEXT DEFAULT '',
+      customer_tier TEXT DEFAULT ''
     )
   `);
 
-  await db.run(`
-    CREATE OR REPLACE VIEW daily_spend AS
+  db.exec(`
+    CREATE VIEW IF NOT EXISTS daily_spend AS
     SELECT
-      DATE_TRUNC('day', timestamp) AS day,
+      strftime('%Y-%m-%d', timestamp) AS day,
       team,
       app_id,
       model,
@@ -43,11 +45,11 @@ export async function initDatabase(): Promise<Database> {
       SUM(input_tokens) AS total_input_tokens,
       SUM(output_tokens) AS total_output_tokens
     FROM cost_events
-    GROUP BY DATE_TRUNC('day', timestamp), team, app_id, model
+    GROUP BY strftime('%Y-%m-%d', timestamp), team, app_id, model
   `);
 
-  await db.run(`
-    CREATE OR REPLACE VIEW model_usage AS
+  db.exec(`
+    CREATE VIEW IF NOT EXISTS model_usage AS
     SELECT
       model,
       provider,
@@ -61,8 +63,8 @@ export async function initDatabase(): Promise<Database> {
     GROUP BY model, provider
   `);
 
-  await db.run(`
-    CREATE OR REPLACE VIEW team_spend AS
+  db.exec(`
+    CREATE VIEW IF NOT EXISTS team_spend AS
     SELECT
       team,
       SUM(cost_usd) AS total_spend,
@@ -74,14 +76,14 @@ export async function initDatabase(): Promise<Database> {
     GROUP BY team, model, app_id
   `);
 
-  await db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS budgets (
-      id VARCHAR PRIMARY KEY,
-      team VARCHAR DEFAULT '',
-      app_id VARCHAR DEFAULT '',
-      daily_limit_usd DOUBLE DEFAULT 0,
-      monthly_limit_usd DOUBLE DEFAULT 0,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      id TEXT PRIMARY KEY,
+      team TEXT DEFAULT '',
+      app_id TEXT DEFAULT '',
+      daily_limit_usd REAL DEFAULT 0,
+      monthly_limit_usd REAL DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
     )
   `);
 
@@ -89,7 +91,7 @@ export async function initDatabase(): Promise<Database> {
   return db;
 }
 
-export function getDatabase(): Database {
+export function getDatabase(): Database.Database {
   if (!db) {
     throw new Error("Database not initialized. Call initDatabase() first.");
   }

@@ -4,11 +4,11 @@ import { getDatabase } from "../db/init";
 const router = Router();
 
 // GET /api/models — all models with usage stats
-router.get("/", async (req: Request, res: Response) => {
+router.get("/", (req: Request, res: Response) => {
   try {
     const db = getDatabase();
 
-    const rows = await db.all(`
+    const rows = db.prepare(`
       SELECT
         model,
         provider,
@@ -21,7 +21,7 @@ router.get("/", async (req: Request, res: Response) => {
       FROM cost_events
       GROUP BY model, provider
       ORDER BY total_spend DESC
-    `);
+    `).all();
 
     res.json({ data: rows, error: null });
   } catch (err: any) {

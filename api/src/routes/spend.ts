@@ -4,7 +4,7 @@ import { getDatabase } from "../db/init";
 const router = Router();
 
 // GET /api/spend — time series of spend
-router.get("/", async (req: Request, res: Response) => {
+router.get("/", (req: Request, res: Response) => {
   try {
     const {
       start_date,
@@ -16,16 +16,16 @@ router.get("/", async (req: Request, res: Response) => {
     } = req.query;
 
     const granMap: Record<string, string> = {
-      hour: "hour",
-      day: "day",
-      week: "week",
-      month: "month",
+      hour: "strftime('%Y-%m-%dT%H:00:00Z', timestamp)",
+      day: "strftime('%Y-%m-%d', timestamp)",
+      week: "strftime('%Y-%W', timestamp)",
+      month: "strftime('%Y-%m', timestamp)",
     };
-    const gran = granMap[granularity as string] || "day";
+    const granExpr = granMap[granularity as string] || granMap["day"];
 
     let query = `
       SELECT
-        DATE_TRUNC('${gran}', timestamp) AS period,
+        ${granExpr} AS period,
         SUM(cost_usd) AS total_spend,
         COUNT(*) AS request_count,
         SUM(input_tokens + output_tokens) AS total_tokens
@@ -58,7 +58,7 @@ router.get("/", async (req: Request, res: Response) => {
     query += ` GROUP BY period ORDER BY period ASC`;
 
     const db = getDatabase();
-    const rows = await db.all(query, ...params);
+    const rows = db.prepare(query).all(...params);
 
     res.json({ data: rows, error: null });
   } catch (err: any) {
@@ -68,7 +68,7 @@ router.get("/", async (req: Request, res: Response) => {
 });
 
 // GET /api/spend/summary — totals for a date range
-router.get("/summary", async (req: Request, res: Response) => {
+router.get("/summary", (req: Request, res: Response) => {
   try {
     const { start_date, end_date } = req.query;
 
@@ -86,33 +86,37 @@ router.get("/summary", async (req: Request, res: Response) => {
 
     const db = getDatabase();
 
-    const [totalRow] = await db.all(
-      `SELECT COALESCE(SUM(cost_usd), 0) AS total_spend,
-              COUNT(*) AS total_requests
-       FROM cost_events ${whereClause}`,
-      ...params
-    );
+    const totalRow = db
+      .prepare(
+        `SELECT COALESCE(SUM(cost_usd), 0) AS total_spend,
+                COUNT(*) AS total_requests
+         FROM cost_events ${whereClause}`
+      )
+      .get(...params) as any;
 
-    const byTeam = await db.all(
-      `SELECT team, SUM(cost_usd) AS spend
-       FROM cost_events ${whereClause}
-       GROUP BY team ORDER BY spend DESC`,
-      ...params
-    );
+    const byTeam = db
+      .prepare(
+        `SELECT team, SUM(cost_usd) AS spend
+         FROM cost_events ${whereClause}
+         GROUP BY team ORDER BY spend DESC`
+      )
+      .all(...params);
 
-    const byModel = await db.all(
-      `SELECT model, SUM(cost_usd) AS spend
-       FROM cost_events ${whereClause}
-       GROUP BY model ORDER BY spend DESC`,
-      ...params
-    );
+    const byModel = db
+      .prepare(
+        `SELECT model, SUM(cost_usd) AS spend
+         FROM cost_events ${whereClause}
+         GROUP BY model ORDER BY spend DESC`
+      )
+      .all(...params);
 
-    const byApp = await db.all(
-      `SELECT app_id, SUM(cost_usd) AS spend
-       FROM cost_events ${whereClause}
-       GROUP BY app_id ORDER BY spend DESC`,
-      ...params
-    );
+    const byApp = db
+      .prepare(
+        `SELECT app_id, SUM(cost_usd) AS spend
+         FROM cost_events ${whereClause}
+         GROUP BY app_id ORDER BY spend DESC`
+      )
+      .all(...params);
 
     const summary = {
       total_spend: totalRow?.total_spend ?? 0,

@@ -8,17 +8,25 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useApi } from '../hooks/useApi';
-import ModelTable, { ModelRow } from '../components/ModelTable';
+import ModelTable from '../components/ModelTable';
+import type { ModelRow } from '../types';
 import { formatCurrency } from '../lib/format';
 
-interface ModelsData {
-  models: ModelRow[];
+interface ApiModelRow {
+  model: string;
+  provider: string;
+  total_spend: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_tokens: number;
+  avg_cost_per_request: number;
+  request_count: number;
 }
 
 export default function Models() {
-  const { data, loading, error } = useApi<ModelsData>('/api/models');
+  const { data: raw, loading, error } = useApi<ApiModelRow[]>('/api/models');
 
-  if (loading && !data) {
+  if (loading && !raw) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500">
         Loading...
@@ -34,9 +42,19 @@ export default function Models() {
     );
   }
 
-  if (!data) return null;
+  if (!raw) return null;
 
-  const chartData = [...data.models]
+  // Map API shape to ModelRow
+  const models: ModelRow[] = raw.map((r) => ({
+    model: r.model,
+    requests: r.request_count,
+    input_tokens: r.total_input_tokens,
+    output_tokens: r.total_output_tokens,
+    total_cost: r.total_spend,
+    avg_cost_per_request: r.avg_cost_per_request,
+  }));
+
+  const chartData = [...models]
     .sort((a, b) => b.total_cost - a.total_cost)
     .slice(0, 10);
 
@@ -79,7 +97,7 @@ export default function Models() {
         </ResponsiveContainer>
       </div>
 
-      <ModelTable data={data.models} />
+      <ModelTable data={models} />
     </div>
   );
 }

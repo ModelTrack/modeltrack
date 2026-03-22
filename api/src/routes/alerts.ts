@@ -5,19 +5,19 @@ import { getDatabase } from "../db/init";
 const router = Router();
 
 // GET /api/alerts — recent anomalies (hourly spend > 2x average for that hour)
-router.get("/", async (req: Request, res: Response) => {
+router.get("/", (req: Request, res: Response) => {
   try {
     const db = getDatabase();
 
     // Find hours where spend is > 2x the overall hourly average
-    const rows = await db.all(`
+    const rows = db.prepare(`
       WITH hourly AS (
         SELECT
-          DATE_TRUNC('hour', timestamp) AS hour,
+          strftime('%Y-%m-%dT%H:00:00Z', timestamp) AS hour,
           team,
           SUM(cost_usd) AS hourly_spend
         FROM cost_events
-        GROUP BY DATE_TRUNC('hour', timestamp), team
+        GROUP BY strftime('%Y-%m-%dT%H:00:00Z', timestamp), team
       ),
       avg_hourly AS (
         SELECT
@@ -37,7 +37,7 @@ router.get("/", async (req: Request, res: Response) => {
         AND a.avg_spend > 0
       ORDER BY h.hour DESC
       LIMIT 100
-    `);
+    `).all();
 
     const alerts = (rows as any[]).map((r) => ({
       id: uuidv4(),
@@ -58,7 +58,7 @@ router.get("/", async (req: Request, res: Response) => {
 });
 
 // POST /api/alerts/budgets — set a budget for a team/app
-router.post("/budgets", async (req: Request, res: Response) => {
+router.post("/budgets", (req: Request, res: Response) => {
   try {
     const { team, app_id, daily_limit_usd, monthly_limit_usd } = req.body;
 
@@ -73,9 +73,10 @@ router.post("/budgets", async (req: Request, res: Response) => {
     const db = getDatabase();
     const id = uuidv4();
 
-    await db.run(
+    db.prepare(
       `INSERT INTO budgets (id, team, app_id, daily_limit_usd, monthly_limit_usd)
-       VALUES (?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?)`
+    ).run(
       id,
       team || "",
       app_id || "",
@@ -100,10 +101,10 @@ router.post("/budgets", async (req: Request, res: Response) => {
 });
 
 // GET /api/alerts/budgets — list all budgets
-router.get("/budgets", async (req: Request, res: Response) => {
+router.get("/budgets", (req: Request, res: Response) => {
   try {
     const db = getDatabase();
-    const rows = await db.all(`SELECT * FROM budgets ORDER BY created_at DESC`);
+    const rows = db.prepare(`SELECT * FROM budgets ORDER BY created_at DESC`).all();
     res.json({ data: rows, error: null });
   } catch (err: any) {
     console.error("Error in GET /api/alerts/budgets:", err);

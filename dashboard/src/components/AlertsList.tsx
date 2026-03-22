@@ -1,12 +1,5 @@
 import { formatCurrency, formatRelativeTime } from '../lib/format';
-
-export interface Alert {
-  id: string;
-  severity: 'warning' | 'critical';
-  description: string;
-  timestamp: string;
-  amount: number;
-}
+import type { Alert } from '../types';
 
 interface AlertsListProps {
   alerts: Alert[];

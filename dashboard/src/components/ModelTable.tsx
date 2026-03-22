@@ -1,14 +1,6 @@
 import { useState } from 'react';
 import { formatCurrency, formatNumber, formatTokens } from '../lib/format';
-
-export interface ModelRow {
-  model: string;
-  requests: number;
-  input_tokens: number;
-  output_tokens: number;
-  total_cost: number;
-  avg_cost_per_request: number;
-}
+import type { ModelRow } from '../types';
 
 type SortKey = keyof ModelRow;
 

@@ -8,12 +8,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { formatCurrency } from '../lib/format';
-
-export interface TeamRow {
-  team: string;
-  total_cost: number;
-  requests: number;
-}
+import type { TeamRow } from '../types';
 
 interface TeamBreakdownProps {
   data: TeamRow[];

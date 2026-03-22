@@ -4,11 +4,11 @@ import { getDatabase } from "../db/init";
 const router = Router();
 
 // GET /api/teams — all teams with spend breakdown
-router.get("/", async (req: Request, res: Response) => {
+router.get("/", (req: Request, res: Response) => {
   try {
     const db = getDatabase();
 
-    const teamTotals = await db.all(`
+    const teamTotals = db.prepare(`
       SELECT
         team,
         SUM(cost_usd) AS total_spend,
@@ -16,19 +16,19 @@ router.get("/", async (req: Request, res: Response) => {
       FROM cost_events
       GROUP BY team
       ORDER BY total_spend DESC
-    `);
+    `).all();
 
-    const teamModels = await db.all(`
+    const teamModels = db.prepare(`
       SELECT team, model, SUM(cost_usd) AS spend
       FROM cost_events
       GROUP BY team, model
-    `);
+    `).all();
 
-    const teamApps = await db.all(`
+    const teamApps = db.prepare(`
       SELECT team, app_id, SUM(cost_usd) AS spend
       FROM cost_events
       GROUP BY team, app_id
-    `);
+    `).all();
 
     const modelMap: Record<string, Record<string, number>> = {};
     for (const row of teamModels as any[]) {

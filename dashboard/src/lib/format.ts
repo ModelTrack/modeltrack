@@ -1,9 +1,17 @@
-export function formatCurrency(cents: number): string {
-  const dollars = cents / 100;
-  if (dollars >= 1000) {
-    return `$${(dollars / 1000).toFixed(1)}k`;
+export function formatCurrency(value: number): string {
+  if (value >= 1000) {
+    return `$${(value / 1000).toFixed(1)}k`;
   }
-  return `$${dollars.toFixed(2)}`;
+  if (value >= 1) {
+    return `$${value.toFixed(2)}`;
+  }
+  if (value >= 0.01) {
+    return `$${value.toFixed(3)}`;
+  }
+  if (value === 0) {
+    return '$0.00';
+  }
+  return `$${value.toFixed(4)}`;
 }
 
 export function formatNumber(n: number): string {

@@ -36,11 +36,11 @@ app.use("/api/alerts", alertsRoutes);
 app.use("/api/overview", overviewRoutes);
 
 // Start server
-async function main() {
+function main() {
   try {
-    // Initialize DuckDB
-    await initDatabase();
-    console.log("DuckDB initialized.");
+    // Initialize SQLite
+    initDatabase();
+    console.log("SQLite initialized.");
 
     // Start JSONL ingestion loop (every 10 seconds)
     startIngestion(10_000);

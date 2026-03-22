@@ -1,23 +1,16 @@
 import { useApi } from '../hooks/useApi';
 import MetricCard from '../components/MetricCard';
 import SpendChart from '../components/SpendChart';
-import ModelTable, { ModelRow } from '../components/ModelTable';
-import TeamBreakdown, { TeamRow } from '../components/TeamBreakdown';
 import { formatCurrency, formatNumber } from '../lib/format';
 
 interface OverviewData {
   spend_today: number;
+  spend_this_week: number;
   spend_this_month: number;
   total_requests: number;
-  avg_cost_per_request: number;
-  daily_spend: { date: string; cost: number }[];
-  top_models: ModelRow[];
-  teams: TeamRow[];
-  trends?: {
-    spend_today: { direction: 'up' | 'down'; percentage: number };
-    spend_this_month: { direction: 'up' | 'down'; percentage: number };
-    total_requests: { direction: 'up' | 'down'; percentage: number };
-  };
+  top_model: { model: string; spend: number } | null;
+  top_team: { team: string; spend: number } | null;
+  spend_trend: { day: string; spend: number; requests: number }[];
 }
 
 export default function Overview() {
@@ -41,6 +34,12 @@ export default function Overview() {
 
   if (!data) return null;
 
+  // Map spend_trend to the shape SpendChart expects ({ date, cost })
+  const chartData = (data.spend_trend ?? []).map((d) => ({
+    date: d.day,
+    cost: d.spend,
+  }));
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-semibold text-gray-100">Overview</h2>
@@ -49,35 +48,37 @@ export default function Overview() {
         <MetricCard
           label="Spend Today"
           value={formatCurrency(data.spend_today)}
-          trend={data.trends?.spend_today}
+        />
+        <MetricCard
+          label="This Week"
+          value={formatCurrency(data.spend_this_week)}
         />
         <MetricCard
           label="This Month"
           value={formatCurrency(data.spend_this_month)}
-          trend={data.trends?.spend_this_month}
         />
         <MetricCard
           label="Total Requests"
           value={formatNumber(data.total_requests)}
-          trend={data.trends?.total_requests}
-        />
-        <MetricCard
-          label="Avg Cost/Request"
-          value={formatCurrency(data.avg_cost_per_request)}
         />
       </div>
 
-      <SpendChart data={data.daily_spend} title="30-Day Spend Trend" />
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div>
-          <h3 className="text-lg font-medium text-gray-100 mb-3">
-            Top Models
-          </h3>
-          <ModelTable data={data.top_models} />
-        </div>
-        <TeamBreakdown data={data.teams} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {data.top_model && (
+          <MetricCard
+            label="Top Model"
+            value={`${data.top_model.model} (${formatCurrency(data.top_model.spend)})`}
+          />
+        )}
+        {data.top_team && (
+          <MetricCard
+            label="Top Team"
+            value={`${data.top_team.team} (${formatCurrency(data.top_team.spend)})`}
+          />
+        )}
       </div>
+
+      <SpendChart data={chartData} title="30-Day Spend Trend" />
     </div>
   );
 }

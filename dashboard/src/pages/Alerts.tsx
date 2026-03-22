@@ -1,13 +1,21 @@
 import { useState } from 'react';
 import { useApi } from '../hooks/useApi';
-import AlertsList, { Alert } from '../components/AlertsList';
+import AlertsList from '../components/AlertsList';
+import type { Alert } from '../types';
 
-interface AlertsData {
-  alerts: Alert[];
+interface ApiAlert {
+  id: string;
+  type: string;
+  message: string;
+  team: string;
+  hour: string;
+  hourly_spend: number;
+  avg_spend: number;
+  created_at: string;
 }
 
 export default function Alerts() {
-  const { data, loading, error } = useApi<AlertsData>('/api/alerts');
+  const { data: raw, loading, error } = useApi<ApiAlert[]>('/api/alerts');
 
   const [team, setTeam] = useState('');
   const [app, setApp] = useState('');
@@ -28,8 +36,8 @@ export default function Alerts() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           team,
-          app: app || undefined,
-          monthly_budget: Math.round(parseFloat(budget) * 100),
+          app_id: app || undefined,
+          monthly_limit_usd: parseFloat(budget),
         }),
       });
 
@@ -48,7 +56,7 @@ export default function Alerts() {
     }
   }
 
-  if (loading && !data) {
+  if (loading && !raw) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500">
         Loading...
@@ -64,11 +72,20 @@ export default function Alerts() {
     );
   }
 
+  // Map API alerts to the Alert interface expected by AlertsList
+  const alerts: Alert[] = (raw ?? []).map((a) => ({
+    id: a.id,
+    severity: a.hourly_spend > 3 * a.avg_spend ? 'critical' as const : 'warning' as const,
+    description: a.message,
+    timestamp: a.created_at,
+    amount: a.hourly_spend,
+  }));
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-semibold text-gray-100">Alerts</h2>
 
-      <AlertsList alerts={data?.alerts ?? []} />
+      <AlertsList alerts={alerts} />
 
       <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
         <h3 className="text-lg font-medium text-gray-100 mb-4">
