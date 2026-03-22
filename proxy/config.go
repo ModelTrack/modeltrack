@@ -10,6 +10,7 @@ import (
 type Config struct {
 	Port             int
 	AnthropicBaseURL string
+	OpenAIBaseURL    string
 	DataDir          string
 	LogLevel         string
 	CostEventsFile   string
@@ -20,6 +21,7 @@ func LoadConfig() (*Config, error) {
 	cfg := &Config{
 		Port:             8080,
 		AnthropicBaseURL: "https://api.anthropic.com",
+		OpenAIBaseURL:    "https://api.openai.com",
 		DataDir:          "../data",
 		LogLevel:         "info",
 	}
@@ -34,6 +36,10 @@ func LoadConfig() (*Config, error) {
 
 	if v := os.Getenv("ANTHROPIC_BASE_URL"); v != "" {
 		cfg.AnthropicBaseURL = v
+	}
+
+	if v := os.Getenv("OPENAI_BASE_URL"); v != "" {
+		cfg.OpenAIBaseURL = v
 	}
 
 	if v := os.Getenv("DATA_DIR"); v != "" {

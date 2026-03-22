@@ -26,6 +26,13 @@ func main() {
 	// Initialize the Anthropic adapter.
 	anthropicAdapter := adapters.NewAnthropicAdapter(cfg.AnthropicBaseURL)
 
+	// Initialize the OpenAI adapter.
+	openaiAdapter := adapters.NewOpenAIAdapter(cfg.OpenAIBaseURL)
+
+	// Initialize the budget tracker.
+	budgetsFile := cfg.DataDir + "/budgets.json"
+	budgetTracker := NewBudgetTracker(budgetsFile, cfg.CostEventsFile)
+
 	// Set up the HTTP mux.
 	mux := http.NewServeMux()
 
@@ -37,7 +44,7 @@ func main() {
 	mux.HandleFunc("/stats", StatsHandler(eventLogger))
 
 	// Proxy handler for LLM API routes.
-	proxyHandler := NewProxyHandler(anthropicAdapter, eventLogger)
+	proxyHandler := NewProxyHandler(anthropicAdapter, openaiAdapter, eventLogger, budgetTracker)
 	mux.Handle("/v1/", proxyHandler)
 
 	// Wrap with CORS middleware.
@@ -56,7 +63,8 @@ func main() {
 	log.Printf("  Data directory: %s", cfg.DataDir)
 	log.Printf("  Cost events:    %s", cfg.CostEventsFile)
 	log.Printf("  Log level:      %s", cfg.LogLevel)
-	log.Printf("  Providers:      anthropic (%s)", cfg.AnthropicBaseURL)
+	log.Printf("  Budgets file:   %s", budgetsFile)
+	log.Printf("  Providers:      anthropic (%s), openai (%s)", cfg.AnthropicBaseURL, cfg.OpenAIBaseURL)
 
 	// Graceful shutdown.
 	errCh := make(chan error, 1)
@@ -83,6 +91,9 @@ func main() {
 	if err := server.Shutdown(ctx); err != nil {
 		log.Printf("Server shutdown error: %v", err)
 	}
+
+	// Close the budget tracker.
+	budgetTracker.Close()
 
 	// Flush and close the event logger.
 	eventLogger.Close()

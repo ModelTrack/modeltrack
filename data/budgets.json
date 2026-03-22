@@ -1,0 +1,9 @@
+{
+  "budgets": [
+    {"team": "product", "app": "", "monthly_limit": 200.00, "action": "warn"},
+    {"team": "data-eng", "app": "", "monthly_limit": 300.00, "action": "warn"},
+    {"team": "data-eng", "app": "summarizer", "monthly_limit": 50.00, "action": "block"},
+    {"team": "platform", "app": "", "monthly_limit": 250.00, "action": "warn"},
+    {"team": "ml-research", "app": "", "monthly_limit": 500.00, "action": "block"}
+  ]
+}

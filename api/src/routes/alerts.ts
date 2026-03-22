@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { getDatabase } from "../db/init";
+import { sendTestMessage } from "../services/slack";
 
 const router = Router();
 
@@ -108,6 +109,38 @@ router.get("/budgets", (req: Request, res: Response) => {
     res.json({ data: rows, error: null });
   } catch (err: any) {
     console.error("Error in GET /api/alerts/budgets:", err);
+    res.status(500).json({ data: null, error: err.message });
+  }
+});
+
+// POST /api/alerts/test-slack — send a test message to verify Slack webhook
+router.post("/test-slack", async (req: Request, res: Response) => {
+  try {
+    const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+
+    if (!webhookUrl) {
+      res.status(400).json({
+        data: null,
+        error: "SLACK_WEBHOOK_URL is not configured. Set it in your .env file.",
+      });
+      return;
+    }
+
+    const success = await sendTestMessage();
+
+    if (success) {
+      res.json({
+        data: { message: "Test message sent to Slack successfully." },
+        error: null,
+      });
+    } else {
+      res.status(502).json({
+        data: null,
+        error: "Failed to send test message to Slack. Check the webhook URL and Slack channel.",
+      });
+    }
+  } catch (err: any) {
+    console.error("Error in POST /api/alerts/test-slack:", err);
     res.status(500).json({ data: null, error: err.message });
   }
 });

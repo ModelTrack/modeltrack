@@ -34,17 +34,64 @@ var anthropicPricing = map[string]ModelPricing{
 	},
 }
 
+// openaiPricing maps model identifiers to their pricing.
+// Prices are in USD per token (converted from per-million-token rates).
+var openaiPricing = map[string]ModelPricing{
+	// GPT-4o — $2.50 / $10.00 per 1M tokens
+	"gpt-4o": {
+		InputPerToken:  2.50 / 1_000_000,
+		OutputPerToken: 10.00 / 1_000_000,
+	},
+	// GPT-4o mini — $0.15 / $0.60 per 1M tokens
+	"gpt-4o-mini": {
+		InputPerToken:  0.15 / 1_000_000,
+		OutputPerToken: 0.60 / 1_000_000,
+	},
+	// GPT-4.1 — $2.00 / $8.00 per 1M tokens
+	"gpt-4.1": {
+		InputPerToken:  2.00 / 1_000_000,
+		OutputPerToken: 8.00 / 1_000_000,
+	},
+	// GPT-4.1 mini — $0.40 / $1.60 per 1M tokens
+	"gpt-4.1-mini": {
+		InputPerToken:  0.40 / 1_000_000,
+		OutputPerToken: 1.60 / 1_000_000,
+	},
+	// GPT-4.1 nano — $0.10 / $0.40 per 1M tokens
+	"gpt-4.1-nano": {
+		InputPerToken:  0.10 / 1_000_000,
+		OutputPerToken: 0.40 / 1_000_000,
+	},
+	// o3 — $2.00 / $8.00 per 1M tokens
+	"o3": {
+		InputPerToken:  2.00 / 1_000_000,
+		OutputPerToken: 8.00 / 1_000_000,
+	},
+	// o4-mini — $1.10 / $4.40 per 1M tokens
+	"o4-mini": {
+		InputPerToken:  1.10 / 1_000_000,
+		OutputPerToken: 4.40 / 1_000_000,
+	},
+}
+
 // CalculateCost computes the total cost in USD for a given model and token counts.
 // Returns 0 if the model is unknown.
 func CalculateCost(provider, model string, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens int) float64 {
-	if provider != "anthropic" {
+	var pricingTable map[string]ModelPricing
+
+	switch provider {
+	case "anthropic":
+		pricingTable = anthropicPricing
+	case "openai":
+		pricingTable = openaiPricing
+	default:
 		return 0
 	}
 
-	pricing, ok := anthropicPricing[model]
+	pricing, ok := pricingTable[model]
 	if !ok {
 		// Try common aliases / versioned names by checking prefixes.
-		for key, p := range anthropicPricing {
+		for key, p := range pricingTable {
 			if len(model) > len(key) && model[:len(key)] == key {
 				pricing = p
 				ok = true

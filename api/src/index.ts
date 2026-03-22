@@ -10,6 +10,7 @@ import modelsRoutes from "./routes/models";
 import teamsRoutes from "./routes/teams";
 import alertsRoutes from "./routes/alerts";
 import overviewRoutes from "./routes/overview";
+import { startScheduler } from "./services/scheduler";
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3001", 10);
@@ -44,6 +45,9 @@ function main() {
 
     // Start JSONL ingestion loop (every 10 seconds)
     startIngestion(10_000);
+
+    // Start Slack alert scheduler
+    startScheduler();
 
     app.listen(PORT, () => {
       console.log(`CostTrack API server running on http://localhost:${PORT}`);
