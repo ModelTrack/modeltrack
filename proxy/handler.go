@@ -63,6 +63,9 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 			w.Write([]byte(budgetResult.FormatExceededMessage()))
 			return
 		}
+		if budgetResult.Status == BudgetWarning || (budgetResult.Status == BudgetExceeded && budgetResult.Action == "warn") {
+			w.Header().Set("X-CostTrack-Budget-Warning", budgetResult.FormatWarningHeader())
+		}
 	}
 
 	// Proxy the request to Anthropic.
@@ -146,6 +149,9 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 			w.WriteHeader(http.StatusTooManyRequests)
 			w.Write([]byte(budgetResult.FormatExceededMessage()))
 			return
+		}
+		if budgetResult.Status == BudgetWarning || (budgetResult.Status == BudgetExceeded && budgetResult.Action == "warn") {
+			w.Header().Set("X-CostTrack-Budget-Warning", budgetResult.FormatWarningHeader())
 		}
 	}
 
