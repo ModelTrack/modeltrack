@@ -11,7 +11,9 @@ import teamsRoutes from "./routes/teams";
 import alertsRoutes from "./routes/alerts";
 import sessionsRoutes from "./routes/sessions";
 import featuresRoutes from "./routes/features";
+import promptsRoutes from "./routes/prompts";
 import overviewRoutes from "./routes/overview";
+import reportsRoutes from "./routes/reports";
 import { startScheduler } from "./services/scheduler";
 
 const app = express();
@@ -38,7 +40,9 @@ app.use("/api/teams", teamsRoutes);
 app.use("/api/alerts", alertsRoutes);
 app.use("/api/sessions", sessionsRoutes);
 app.use("/api/features", featuresRoutes);
+app.use("/api/prompts", promptsRoutes);
 app.use("/api/overview", overviewRoutes);
+app.use("/api/reports", reportsRoutes);
 
 // Start server
 function main() {

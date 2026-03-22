@@ -37,8 +37,9 @@ function ingestNewEvents(): number {
     (event_id, timestamp, provider, model, input_tokens, output_tokens,
      cache_read_tokens, cache_write_tokens, cost_usd, latency_ms,
      status_code, is_streaming, app_id, team, feature, customer_tier,
-     session_id, trace_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     session_id, trace_id, prompt_hash, system_prompt_tokens,
+     user_prompt_tokens, prompt_template_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
 
   let ingested = 0;
@@ -66,7 +67,11 @@ function ingestNewEvents(): number {
           event.feature || "",
           event.customer_tier || "",
           event.session_id || "",
-          event.trace_id || ""
+          event.trace_id || "",
+          event.prompt_hash || "",
+          event.system_prompt_tokens || 0,
+          event.user_prompt_tokens || 0,
+          event.prompt_template_id || ""
         );
         ingested++;
       } catch (err) {

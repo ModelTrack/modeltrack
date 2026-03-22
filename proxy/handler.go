@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -40,8 +42,86 @@ func NewProxyHandler(anthropic *adapters.AnthropicAdapter, openai *adapters.Open
 type llmRequestFields struct {
 	Model       string          `json:"model"`
 	Messages    json.RawMessage `json:"messages"`
+	System      json.RawMessage `json:"system,omitempty"` // Anthropic top-level system field
 	Stream      bool            `json:"stream"`
 	Temperature *float64        `json:"temperature,omitempty"`
+}
+
+// promptAnalysis holds extracted prompt fingerprint data for cost analysis.
+type promptAnalysis struct {
+	PromptHash         string
+	SystemPromptTokens int
+	UserPromptTokens   int
+	PromptTemplateID   string
+}
+
+// chatMessage represents a single message in a chat messages array.
+type chatMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+// estimateTokens returns a rough token count using chars/4 approximation.
+func estimateTokens(text string) int {
+	if len(text) == 0 {
+		return 0
+	}
+	return (len(text) + 3) / 4
+}
+
+// hashPrompt returns the first 8 hex chars of the SHA-256 hash of the input.
+func hashPrompt(content string) string {
+	if content == "" {
+		return ""
+	}
+	h := sha256.Sum256([]byte(content))
+	return hex.EncodeToString(h[:])[:8]
+}
+
+// extractPromptAnalysis parses messages to extract prompt fingerprint data.
+// provider should be "anthropic" or "openai".
+func extractPromptAnalysis(fields *llmRequestFields, provider string, templateHeader string) promptAnalysis {
+	pa := promptAnalysis{
+		PromptTemplateID: templateHeader,
+	}
+
+	var systemContent string
+	var userTokens int
+
+	// For Anthropic, the system prompt can be in the top-level "system" field.
+	if provider == "anthropic" && len(fields.System) > 0 {
+		// Try parsing as a plain string first.
+		var sysStr string
+		if err := json.Unmarshal(fields.System, &sysStr); err == nil {
+			systemContent = sysStr
+		}
+	}
+
+	// Parse messages array for system/user messages.
+	if len(fields.Messages) > 0 {
+		var msgs []chatMessage
+		if err := json.Unmarshal(fields.Messages, &msgs); err == nil {
+			for _, msg := range msgs {
+				switch msg.Role {
+				case "system":
+					// Accumulate system content (for OpenAI; also fallback for Anthropic).
+					if systemContent == "" {
+						systemContent = msg.Content
+					} else {
+						systemContent += "\n" + msg.Content
+					}
+				case "user":
+					userTokens += estimateTokens(msg.Content)
+				}
+			}
+		}
+	}
+
+	pa.SystemPromptTokens = estimateTokens(systemContent)
+	pa.UserPromptTokens = userTokens
+	pa.PromptHash = hashPrompt(systemContent)
+
+	return pa
 }
 
 // ServeHTTP routes requests to the appropriate provider adapter.
@@ -90,6 +170,7 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 	customerTier := r.Header.Get("X-CostTrack-Customer-Tier")
 	sessionID := r.Header.Get("X-CostTrack-Session-ID")
 	traceID := r.Header.Get("X-CostTrack-Trace-ID")
+	promptTemplateID := r.Header.Get("X-CostTrack-Prompt-Template")
 
 	// Check budget before forwarding the request.
 	if h.budget != nil && team != "" {
@@ -121,6 +202,9 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
 		return
 	}
+
+	// Extract prompt analysis (fingerprint, token breakdown).
+	pa := extractPromptAnalysis(&fields, "anthropic", promptTemplateID)
 
 	// --- Model routing ---
 	var routingDecision RoutingDecision
@@ -188,24 +272,28 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 
 			// Log cache hit event.
 			event := CostEvent{
-				EventID:      uuid.New().String(),
-				Timestamp:    time.Now().UTC().Format(time.RFC3339Nano),
-				Provider:     "anthropic",
-				Model:        fields.Model,
-				CostUSD:      0,
-				StatusCode:   http.StatusOK,
-				IsStreaming:  false,
-				AppID:        appID,
-				Team:         team,
-				Feature:      feature,
-				CustomerTier: customerTier,
-				SessionID:    sessionID,
-				TraceID:      traceID,
-				CacheHit:     true,
-				RoutedFrom:   routingDecision.OriginalModel,
-				RoutedTo:     routedToField(routingDecision),
-				RoutingRule:  routingDecision.RuleName,
-				TokenSummary: "cache_hit=true",
+				EventID:            uuid.New().String(),
+				Timestamp:          time.Now().UTC().Format(time.RFC3339Nano),
+				Provider:           "anthropic",
+				Model:              fields.Model,
+				CostUSD:            0,
+				StatusCode:         http.StatusOK,
+				IsStreaming:        false,
+				AppID:              appID,
+				Team:               team,
+				Feature:            feature,
+				CustomerTier:       customerTier,
+				SessionID:          sessionID,
+				TraceID:            traceID,
+				CacheHit:           true,
+				RoutedFrom:         routingDecision.OriginalModel,
+				RoutedTo:           routedToField(routingDecision),
+				RoutingRule:        routingDecision.RuleName,
+				TokenSummary:       "cache_hit=true",
+				PromptHash:         pa.PromptHash,
+				SystemPromptTokens: pa.SystemPromptTokens,
+				UserPromptTokens:   pa.UserPromptTokens,
+				PromptTemplateID:   pa.PromptTemplateID,
 			}
 			h.logger.Log(event)
 			return
@@ -290,28 +378,32 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 
 	// Log the cost event asynchronously.
 	event := CostEvent{
-		EventID:          uuid.New().String(),
-		Timestamp:        time.Now().UTC().Format(time.RFC3339Nano),
-		Provider:         "anthropic",
-		Model:            result.Usage.Model,
-		InputTokens:      result.Usage.InputTokens,
-		OutputTokens:     result.Usage.OutputTokens,
-		CacheReadTokens:  result.Usage.CacheReadTokens,
-		CacheWriteTokens: result.Usage.CacheWriteTokens,
-		CostUSD:          cost,
-		LatencyMs:        result.LatencyMs,
-		StatusCode:       result.StatusCode,
-		IsStreaming:      result.IsStream,
-		AppID:            appID,
-		Team:             team,
-		Feature:          feature,
-		CustomerTier:     customerTier,
-		SessionID:        sessionID,
-		TraceID:          traceID,
-		RoutedFrom:       routingDecision.OriginalModel,
-		RoutedTo:         routedToField(routingDecision),
-		RoutingRule:      routingDecision.RuleName,
-		TokenSummary:     summary,
+		EventID:            uuid.New().String(),
+		Timestamp:          time.Now().UTC().Format(time.RFC3339Nano),
+		Provider:           "anthropic",
+		Model:              result.Usage.Model,
+		InputTokens:        result.Usage.InputTokens,
+		OutputTokens:       result.Usage.OutputTokens,
+		CacheReadTokens:    result.Usage.CacheReadTokens,
+		CacheWriteTokens:   result.Usage.CacheWriteTokens,
+		CostUSD:            cost,
+		LatencyMs:          result.LatencyMs,
+		StatusCode:         result.StatusCode,
+		IsStreaming:        result.IsStream,
+		AppID:              appID,
+		Team:               team,
+		Feature:            feature,
+		CustomerTier:       customerTier,
+		SessionID:          sessionID,
+		TraceID:            traceID,
+		RoutedFrom:         routingDecision.OriginalModel,
+		RoutedTo:           routedToField(routingDecision),
+		RoutingRule:        routingDecision.RuleName,
+		TokenSummary:       summary,
+		PromptHash:         pa.PromptHash,
+		SystemPromptTokens: pa.SystemPromptTokens,
+		UserPromptTokens:   pa.UserPromptTokens,
+		PromptTemplateID:   pa.PromptTemplateID,
 	}
 
 	h.logger.Log(event)
@@ -350,6 +442,7 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 	customerTier := r.Header.Get("X-CostTrack-Customer-Tier")
 	sessionID := r.Header.Get("X-CostTrack-Session-ID")
 	traceID := r.Header.Get("X-CostTrack-Trace-ID")
+	promptTemplateID := r.Header.Get("X-CostTrack-Prompt-Template")
 
 	// Check budget before forwarding the request.
 	if h.budget != nil && team != "" {
@@ -381,6 +474,9 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
 		return
 	}
+
+	// Extract prompt analysis (fingerprint, token breakdown).
+	pa := extractPromptAnalysis(&fields, "openai", promptTemplateID)
 
 	// --- Model routing ---
 	var routingDecision RoutingDecision
@@ -448,24 +544,28 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 
 			// Log cache hit event.
 			event := CostEvent{
-				EventID:      uuid.New().String(),
-				Timestamp:    time.Now().UTC().Format(time.RFC3339Nano),
-				Provider:     "openai",
-				Model:        fields.Model,
-				CostUSD:      0,
-				StatusCode:   http.StatusOK,
-				IsStreaming:  false,
-				AppID:        appID,
-				Team:         team,
-				Feature:      feature,
-				CustomerTier: customerTier,
-				SessionID:    sessionID,
-				TraceID:      traceID,
-				CacheHit:     true,
-				RoutedFrom:   routingDecision.OriginalModel,
-				RoutedTo:     routedToField(routingDecision),
-				RoutingRule:  routingDecision.RuleName,
-				TokenSummary: "cache_hit=true",
+				EventID:            uuid.New().String(),
+				Timestamp:          time.Now().UTC().Format(time.RFC3339Nano),
+				Provider:           "openai",
+				Model:              fields.Model,
+				CostUSD:            0,
+				StatusCode:         http.StatusOK,
+				IsStreaming:        false,
+				AppID:              appID,
+				Team:               team,
+				Feature:            feature,
+				CustomerTier:       customerTier,
+				SessionID:          sessionID,
+				TraceID:            traceID,
+				CacheHit:           true,
+				RoutedFrom:         routingDecision.OriginalModel,
+				RoutedTo:           routedToField(routingDecision),
+				RoutingRule:        routingDecision.RuleName,
+				TokenSummary:       "cache_hit=true",
+				PromptHash:         pa.PromptHash,
+				SystemPromptTokens: pa.SystemPromptTokens,
+				UserPromptTokens:   pa.UserPromptTokens,
+				PromptTemplateID:   pa.PromptTemplateID,
 			}
 			h.logger.Log(event)
 			return
@@ -548,26 +648,30 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 
 	// Log the cost event asynchronously.
 	event := CostEvent{
-		EventID:      uuid.New().String(),
-		Timestamp:    time.Now().UTC().Format(time.RFC3339Nano),
-		Provider:     "openai",
-		Model:        result.Usage.Model,
-		InputTokens:  result.Usage.InputTokens,
-		OutputTokens: result.Usage.OutputTokens,
-		CostUSD:      cost,
-		LatencyMs:    result.LatencyMs,
-		StatusCode:   result.StatusCode,
-		IsStreaming:  result.IsStream,
-		AppID:        appID,
-		Team:         team,
-		Feature:      feature,
-		CustomerTier: customerTier,
-		SessionID:    sessionID,
-		TraceID:      traceID,
-		RoutedFrom:   routingDecision.OriginalModel,
-		RoutedTo:     routedToField(routingDecision),
-		RoutingRule:  routingDecision.RuleName,
-		TokenSummary: summary,
+		EventID:            uuid.New().String(),
+		Timestamp:          time.Now().UTC().Format(time.RFC3339Nano),
+		Provider:           "openai",
+		Model:              result.Usage.Model,
+		InputTokens:        result.Usage.InputTokens,
+		OutputTokens:       result.Usage.OutputTokens,
+		CostUSD:            cost,
+		LatencyMs:          result.LatencyMs,
+		StatusCode:         result.StatusCode,
+		IsStreaming:        result.IsStream,
+		AppID:              appID,
+		Team:               team,
+		Feature:            feature,
+		CustomerTier:       customerTier,
+		SessionID:          sessionID,
+		TraceID:            traceID,
+		RoutedFrom:         routingDecision.OriginalModel,
+		RoutedTo:           routedToField(routingDecision),
+		RoutingRule:        routingDecision.RuleName,
+		TokenSummary:       summary,
+		PromptHash:         pa.PromptHash,
+		SystemPromptTokens: pa.SystemPromptTokens,
+		UserPromptTokens:   pa.UserPromptTokens,
+		PromptTemplateID:   pa.PromptTemplateID,
 	}
 
 	h.logger.Log(event)

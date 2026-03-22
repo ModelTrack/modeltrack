@@ -224,6 +224,85 @@ export async function sendDailySummary(summary: DailySummary): Promise<boolean> 
   return postToSlack(payload);
 }
 
+export interface WeeklySummary {
+  totalSpend: number;
+  requestCount: number;
+  topModel: { model: string; spend: number } | null;
+  topTeam: { team: string; spend: number } | null;
+  spendChangePct: number;
+  recommendations: string[];
+}
+
+export async function sendWeeklySummary(summary: WeeklySummary): Promise<boolean> {
+  const rateLimitKey = "weekly-summary";
+  if (isRateLimited(rateLimitKey)) {
+    console.log(`[Slack] Rate limited: ${rateLimitKey}`);
+    return false;
+  }
+
+  const trendEmoji = summary.spendChangePct > 0 ? "^" : summary.spendChangePct < 0 ? "v" : "-";
+  const trendLabel = summary.spendChangePct > 0 ? "up" : summary.spendChangePct < 0 ? "down" : "flat";
+
+  const recText = summary.recommendations.length > 0
+    ? summary.recommendations.slice(0, 3).map((r) => `- ${r}`).join("\n")
+    : "No recommendations this week.";
+
+  const payload = {
+    attachments: [
+      {
+        color: "#6366f1",
+        blocks: [
+          {
+            type: "header",
+            text: {
+              type: "plain_text",
+              text: "Weekly Spend Report",
+              emoji: true,
+            },
+          },
+          {
+            type: "section",
+            fields: [
+              { type: "mrkdwn", text: `*Total Spend:*\n$${summary.totalSpend.toFixed(2)}` },
+              { type: "mrkdwn", text: `*Requests:*\n${summary.requestCount.toLocaleString()}` },
+              {
+                type: "mrkdwn",
+                text: `*Top Model:*\n${summary.topModel ? `${summary.topModel.model} ($${summary.topModel.spend.toFixed(2)})` : "N/A"}`,
+              },
+              {
+                type: "mrkdwn",
+                text: `*Top Team:*\n${summary.topTeam ? `${summary.topTeam.team} ($${summary.topTeam.spend.toFixed(2)})` : "N/A"}`,
+              },
+            ],
+          },
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: `*Trend vs Last Week:* ${trendEmoji} ${Math.abs(summary.spendChangePct).toFixed(1)}% (${trendLabel})`,
+            },
+          },
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: `*Recommendations:*\n${recText}`,
+            },
+          },
+          {
+            type: "context",
+            elements: [
+              { type: "mrkdwn", text: `Generated at ${new Date().toISOString()}` },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  return postToSlack(payload);
+}
+
 export async function sendTestMessage(): Promise<boolean> {
   const payload = {
     attachments: [

@@ -2,18 +2,22 @@ import { useState } from 'react';
 import Overview from './pages/Overview';
 import Models from './pages/Models';
 import Features from './pages/Features';
+import Prompts from './pages/Prompts';
 import Teams from './pages/Teams';
 import Sessions from './pages/Sessions';
+import Reports from './pages/Reports';
 import Alerts from './pages/Alerts';
 
-type Page = 'overview' | 'models' | 'features' | 'teams' | 'sessions' | 'alerts';
+type Page = 'overview' | 'models' | 'features' | 'prompts' | 'teams' | 'sessions' | 'reports' | 'alerts';
 
 const navItems: { key: Page; label: string }[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'models', label: 'Models' },
   { key: 'features', label: 'Features' },
+  { key: 'prompts', label: 'Prompts' },
   { key: 'teams', label: 'Teams' },
   { key: 'sessions', label: 'Sessions' },
+  { key: 'reports', label: 'Reports' },
   { key: 'alerts', label: 'Alerts' },
 ];
 
@@ -52,8 +56,10 @@ export default function App() {
         {page === 'overview' && <Overview />}
         {page === 'models' && <Models />}
         {page === 'features' && <Features />}
+        {page === 'prompts' && <Prompts />}
         {page === 'teams' && <Teams />}
         {page === 'sessions' && <Sessions />}
+        {page === 'reports' && <Reports />}
         {page === 'alerts' && <Alerts />}
       </main>
     </div>

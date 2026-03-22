@@ -17,6 +17,10 @@ export interface CostEvent {
   customer_tier: string;
   session_id: string;
   trace_id: string;
+  prompt_hash: string;
+  system_prompt_tokens: number;
+  user_prompt_tokens: number;
+  prompt_template_id: string;
 }
 
 export interface SpendSummary {
@@ -93,4 +97,38 @@ export interface SessionCost {
 export interface ApiResponse<T> {
   data: T | null;
   error: string | null;
+}
+
+export interface ReportSummary {
+  total_spend: number;
+  total_requests: number;
+  unique_models: number;
+  unique_teams: number;
+  unique_features: number;
+  avg_cost_per_request: number;
+  cache_hit_rate: number;
+}
+
+export interface ReportTrends {
+  spend_change_pct: number;
+  request_change_pct: number;
+  cost_efficiency_change_pct: number;
+}
+
+export interface OptimizationAction {
+  type: "routing_savings" | "cache_savings" | "budget_enforced" | "recommendation";
+  description: string;
+  estimated_savings: number;
+}
+
+export interface ExecutiveReport {
+  period: { start: string; end: string; label: string };
+  summary: ReportSummary;
+  trends: ReportTrends;
+  spend_by_team: Array<{ team: string; spend: number; requests: number; pct_of_total: number }>;
+  spend_by_model: Array<{ model: string; spend: number; requests: number; pct_of_total: number }>;
+  spend_by_feature: Array<{ feature: string; spend: number; requests: number; avg_cost: number }>;
+  daily_spend: Array<{ date: string; spend: number; requests: number }>;
+  optimization_actions: OptimizationAction[];
+  recommendations: string[];
 }

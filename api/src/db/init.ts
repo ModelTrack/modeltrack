@@ -31,7 +31,11 @@ export function initDatabase(): Database.Database {
       feature TEXT DEFAULT '',
       customer_tier TEXT DEFAULT '',
       session_id TEXT DEFAULT '',
-      trace_id TEXT DEFAULT ''
+      trace_id TEXT DEFAULT '',
+      prompt_hash TEXT DEFAULT '',
+      system_prompt_tokens INTEGER DEFAULT 0,
+      user_prompt_tokens INTEGER DEFAULT 0,
+      prompt_template_id TEXT DEFAULT ''
     )
   `);
 
@@ -93,6 +97,37 @@ export function initDatabase(): Database.Database {
     FROM cost_events
     WHERE session_id != ''
     GROUP BY session_id
+  `);
+
+  // Add prompt analysis columns to existing tables (safe to run multiple times).
+  const colCheck = db.prepare(
+    "SELECT COUNT(*) AS cnt FROM pragma_table_info('cost_events') WHERE name = 'prompt_hash'"
+  ).get() as any;
+  if (colCheck.cnt === 0) {
+    db.exec(`ALTER TABLE cost_events ADD COLUMN prompt_hash TEXT DEFAULT ''`);
+    db.exec(`ALTER TABLE cost_events ADD COLUMN system_prompt_tokens INTEGER DEFAULT 0`);
+    db.exec(`ALTER TABLE cost_events ADD COLUMN user_prompt_tokens INTEGER DEFAULT 0`);
+    db.exec(`ALTER TABLE cost_events ADD COLUMN prompt_template_id TEXT DEFAULT ''`);
+  }
+
+  db.exec(`
+    CREATE VIEW IF NOT EXISTS prompt_analysis AS
+    SELECT
+      COALESCE(NULLIF(prompt_template_id, ''), prompt_hash) AS prompt_id,
+      COUNT(*) AS request_count,
+      SUM(cost_usd) AS total_cost,
+      AVG(cost_usd) AS avg_cost,
+      AVG(system_prompt_tokens) AS avg_system_tokens,
+      AVG(user_prompt_tokens) AS avg_user_tokens,
+      AVG(input_tokens) AS avg_total_input_tokens,
+      AVG(output_tokens) AS avg_output_tokens,
+      SUM(cost_usd) * 1.0 / COUNT(*) AS cost_per_request,
+      GROUP_CONCAT(DISTINCT model) AS models_used,
+      GROUP_CONCAT(DISTINCT feature) AS features,
+      GROUP_CONCAT(DISTINCT team) AS teams
+    FROM cost_events
+    WHERE prompt_hash IS NOT NULL AND prompt_hash != ''
+    GROUP BY prompt_id
   `);
 
   db.exec(`

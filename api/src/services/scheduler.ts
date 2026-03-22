@@ -1,8 +1,8 @@
 import { v4 as uuidv4 } from "uuid";
 import { getDatabase } from "../db/init";
-import { sendAlert, sendBudgetWarning, sendDailySummary } from "./slack";
+import { sendAlert, sendBudgetWarning, sendDailySummary, sendWeeklySummary } from "./slack";
 import type { Alert } from "../models/types";
-import type { DailySummary } from "./slack";
+import type { DailySummary, WeeklySummary } from "./slack";
 
 // Track which alerts have been sent: Set of "team:hour" keys
 const sentAlerts = new Set<string>();
@@ -10,6 +10,7 @@ let lastClearDay: string = "";
 
 let anomalyInterval: ReturnType<typeof setInterval> | null = null;
 let dailySummaryTimeout: ReturnType<typeof setTimeout> | null = null;
+let weeklySummaryTimeout: ReturnType<typeof setTimeout> | null = null;
 
 function clearSentAlertsDaily(): void {
   const today = new Date().toISOString().slice(0, 10);
@@ -201,6 +202,118 @@ async function generateAndSendDailySummary(): Promise<void> {
   }
 }
 
+async function generateAndSendWeeklySummary(): Promise<void> {
+  try {
+    const db = getDatabase();
+
+    // Current week spend
+    const thisWeek = db.prepare(`
+      SELECT
+        COALESCE(SUM(cost_usd), 0) AS total_spend,
+        COUNT(*) AS request_count
+      FROM cost_events
+      WHERE timestamp >= date('now', '-7 days')
+    `).get() as { total_spend: number; request_count: number };
+
+    // Previous week spend
+    const lastWeek = db.prepare(`
+      SELECT COALESCE(SUM(cost_usd), 0) AS total_spend
+      FROM cost_events
+      WHERE timestamp >= date('now', '-14 days')
+        AND timestamp < date('now', '-7 days')
+    `).get() as { total_spend: number };
+
+    const topModel = db.prepare(`
+      SELECT model, SUM(cost_usd) AS spend
+      FROM cost_events
+      WHERE timestamp >= date('now', '-7 days')
+      GROUP BY model
+      ORDER BY spend DESC
+      LIMIT 1
+    `).get() as { model: string; spend: number } | undefined;
+
+    const topTeam = db.prepare(`
+      SELECT team, SUM(cost_usd) AS spend
+      FROM cost_events
+      WHERE timestamp >= date('now', '-7 days')
+      GROUP BY team
+      ORDER BY spend DESC
+      LIMIT 1
+    `).get() as { team: string; spend: number } | undefined;
+
+    const spendChangePct = lastWeek.total_spend > 0
+      ? ((thisWeek.total_spend - lastWeek.total_spend) / lastWeek.total_spend) * 100
+      : 0;
+
+    // Generate basic recommendations
+    const recommendations: string[] = [];
+
+    if (spendChangePct > 20) {
+      recommendations.push(`AI spend growing ${spendChangePct.toFixed(0)}%/week -- consider budget guardrails`);
+    }
+
+    const cacheStats = db.prepare(`
+      SELECT
+        CASE WHEN COUNT(*) > 0
+          THEN CAST(SUM(CASE WHEN cache_read_tokens > 0 THEN 1 ELSE 0 END) AS REAL) / COUNT(*) * 100
+          ELSE 0
+        END AS cache_hit_rate
+      FROM cost_events
+      WHERE timestamp >= date('now', '-7 days')
+    `).get() as { cache_hit_rate: number };
+
+    if (cacheStats.cache_hit_rate < 10) {
+      recommendations.push("Enable response caching -- similar deployments see 20-30% savings");
+    }
+
+    const summary: WeeklySummary = {
+      totalSpend: thisWeek.total_spend,
+      requestCount: thisWeek.request_count,
+      topModel: topModel ? { model: topModel.model, spend: topModel.spend } : null,
+      topTeam: topTeam ? { team: topTeam.team, spend: topTeam.spend } : null,
+      spendChangePct,
+      recommendations,
+    };
+
+    await sendWeeklySummary(summary);
+    console.log("[Scheduler] Weekly summary sent.");
+  } catch (err) {
+    console.error("[Scheduler] Weekly summary failed:", err);
+  }
+}
+
+function scheduleWeeklySummary(): void {
+  const summaryHour = parseInt(process.env.DAILY_SUMMARY_HOUR || "9", 10);
+
+  function scheduleNext(): void {
+    const now = new Date();
+    const next = new Date(now);
+
+    // Find next Monday
+    const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
+    next.setDate(now.getDate() + daysUntilMonday);
+    next.setHours(summaryHour, 0, 0, 0);
+
+    // If we're past the target time on Monday, schedule for next Monday
+    if (next.getTime() <= now.getTime()) {
+      next.setDate(next.getDate() + 7);
+    }
+
+    const msUntilNext = next.getTime() - now.getTime();
+    console.log(
+      `[Scheduler] Weekly summary scheduled for ${next.toISOString()} (in ${Math.round(msUntilNext / 60000)} minutes)`
+    );
+
+    weeklySummaryTimeout = setTimeout(async () => {
+      await generateAndSendWeeklySummary();
+      scheduleNext();
+    }, msUntilNext);
+  }
+
+  scheduleNext();
+}
+
 function scheduleDailySummary(): void {
   const summaryHour = parseInt(process.env.DAILY_SUMMARY_HOUR || "9", 10);
 
@@ -240,6 +353,7 @@ export function startScheduler(): void {
   }, 30_000);
 
   scheduleDailySummary();
+  scheduleWeeklySummary();
 }
 
 export function stopScheduler(): void {
@@ -250,6 +364,10 @@ export function stopScheduler(): void {
   if (dailySummaryTimeout) {
     clearTimeout(dailySummaryTimeout);
     dailySummaryTimeout = null;
+  }
+  if (weeklySummaryTimeout) {
+    clearTimeout(weeklySummaryTimeout);
+    weeklySummaryTimeout = null;
   }
   console.log("[Scheduler] Stopped.");
 }

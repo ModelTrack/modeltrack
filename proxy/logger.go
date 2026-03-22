@@ -30,10 +30,14 @@ type CostEvent struct {
 	SessionID        string  `json:"session_id,omitempty"`
 	TraceID          string  `json:"trace_id,omitempty"`
 	CacheHit         bool    `json:"cache_hit,omitempty"`
-	RoutedFrom       string  `json:"routed_from,omitempty"`
-	RoutedTo         string  `json:"routed_to,omitempty"`
-	RoutingRule      string  `json:"routing_rule,omitempty"`
-	TokenSummary     string  `json:"token_summary"`
+	RoutedFrom         string  `json:"routed_from,omitempty"`
+	RoutedTo           string  `json:"routed_to,omitempty"`
+	RoutingRule        string  `json:"routing_rule,omitempty"`
+	TokenSummary       string  `json:"token_summary"`
+	PromptHash         string  `json:"prompt_hash,omitempty"`
+	SystemPromptTokens int     `json:"system_prompt_tokens,omitempty"`
+	UserPromptTokens   int     `json:"user_prompt_tokens,omitempty"`
+	PromptTemplateID   string  `json:"prompt_template_id,omitempty"`
 }
 
 // Stats holds aggregate statistics, updated atomically.
