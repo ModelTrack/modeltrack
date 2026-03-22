@@ -29,7 +29,9 @@ export function initDatabase(): Database.Database {
       app_id TEXT DEFAULT '',
       team TEXT DEFAULT '',
       feature TEXT DEFAULT '',
-      customer_tier TEXT DEFAULT ''
+      customer_tier TEXT DEFAULT '',
+      session_id TEXT DEFAULT '',
+      trace_id TEXT DEFAULT ''
     )
   `);
 
@@ -74,6 +76,23 @@ export function initDatabase(): Database.Database {
       SUM(cost_usd) AS segment_spend
     FROM cost_events
     GROUP BY team, model, app_id
+  `);
+
+  db.exec(`
+    CREATE VIEW IF NOT EXISTS session_costs AS
+    SELECT
+      session_id,
+      SUM(cost_usd) AS total_cost,
+      COUNT(*) AS request_count,
+      GROUP_CONCAT(DISTINCT model) AS models,
+      (julianday(MAX(timestamp)) - julianday(MIN(timestamp))) * 86400 AS duration_seconds,
+      team,
+      app_id,
+      MIN(timestamp) AS first_seen,
+      MAX(timestamp) AS last_seen
+    FROM cost_events
+    WHERE session_id != ''
+    GROUP BY session_id
   `);
 
   db.exec(`

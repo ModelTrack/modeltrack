@@ -15,6 +15,8 @@ export interface CostEvent {
   team: string;
   feature: string;
   customer_tier: string;
+  session_id: string;
+  trace_id: string;
 }
 
 export interface SpendSummary {
@@ -63,6 +65,29 @@ export interface Budget {
   daily_limit_usd: number;
   monthly_limit_usd: number;
   created_at: string;
+}
+
+export interface FeatureUsage {
+  feature: string;
+  total_cost: number;
+  request_count: number;
+  avg_cost_per_request: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  primary_model: string;
+  primary_team: string;
+}
+
+export interface SessionCost {
+  session_id: string;
+  total_cost: number;
+  request_count: number;
+  models: string;
+  duration_seconds: number;
+  team: string;
+  app_id: string;
+  first_seen: string;
+  last_seen: string;
 }
 
 export interface ApiResponse<T> {

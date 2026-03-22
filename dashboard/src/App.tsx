@@ -1,15 +1,19 @@
 import { useState } from 'react';
 import Overview from './pages/Overview';
 import Models from './pages/Models';
+import Features from './pages/Features';
 import Teams from './pages/Teams';
+import Sessions from './pages/Sessions';
 import Alerts from './pages/Alerts';
 
-type Page = 'overview' | 'models' | 'teams' | 'alerts';
+type Page = 'overview' | 'models' | 'features' | 'teams' | 'sessions' | 'alerts';
 
 const navItems: { key: Page; label: string }[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'models', label: 'Models' },
+  { key: 'features', label: 'Features' },
   { key: 'teams', label: 'Teams' },
+  { key: 'sessions', label: 'Sessions' },
   { key: 'alerts', label: 'Alerts' },
 ];
 
@@ -47,7 +51,9 @@ export default function App() {
       <main className="flex-1 overflow-y-auto p-8">
         {page === 'overview' && <Overview />}
         {page === 'models' && <Models />}
+        {page === 'features' && <Features />}
         {page === 'teams' && <Teams />}
+        {page === 'sessions' && <Sessions />}
         {page === 'alerts' && <Alerts />}
       </main>
     </div>

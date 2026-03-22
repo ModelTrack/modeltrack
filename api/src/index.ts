@@ -9,6 +9,8 @@ import spendRoutes from "./routes/spend";
 import modelsRoutes from "./routes/models";
 import teamsRoutes from "./routes/teams";
 import alertsRoutes from "./routes/alerts";
+import sessionsRoutes from "./routes/sessions";
+import featuresRoutes from "./routes/features";
 import overviewRoutes from "./routes/overview";
 import { startScheduler } from "./services/scheduler";
 
@@ -34,6 +36,8 @@ app.use("/api/spend", spendRoutes);
 app.use("/api/models", modelsRoutes);
 app.use("/api/teams", teamsRoutes);
 app.use("/api/alerts", alertsRoutes);
+app.use("/api/sessions", sessionsRoutes);
+app.use("/api/features", featuresRoutes);
 app.use("/api/overview", overviewRoutes);
 
 // Start server

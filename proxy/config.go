@@ -14,6 +14,9 @@ type Config struct {
 	DataDir          string
 	LogLevel         string
 	CostEventsFile   string
+	CacheEnabled     bool
+	CacheMaxEntries  int
+	CacheTTLSeconds  int
 }
 
 // LoadConfig reads configuration from environment variables with sensible defaults.
@@ -24,6 +27,9 @@ func LoadConfig() (*Config, error) {
 		OpenAIBaseURL:    "https://api.openai.com",
 		DataDir:          "../data",
 		LogLevel:         "info",
+		CacheEnabled:     true,
+		CacheMaxEntries:  10000,
+		CacheTTLSeconds:  3600,
 	}
 
 	if v := os.Getenv("PROXY_PORT"); v != "" {
@@ -48,6 +54,26 @@ func LoadConfig() (*Config, error) {
 
 	if v := os.Getenv("LOG_LEVEL"); v != "" {
 		cfg.LogLevel = v
+	}
+
+	if v := os.Getenv("CACHE_ENABLED"); v != "" {
+		cfg.CacheEnabled = v == "true" || v == "1"
+	}
+
+	if v := os.Getenv("CACHE_MAX_ENTRIES"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return nil, fmt.Errorf("invalid CACHE_MAX_ENTRIES %q: %w", v, err)
+		}
+		cfg.CacheMaxEntries = n
+	}
+
+	if v := os.Getenv("CACHE_TTL_SECONDS"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return nil, fmt.Errorf("invalid CACHE_TTL_SECONDS %q: %w", v, err)
+		}
+		cfg.CacheTTLSeconds = n
 	}
 
 	cfg.CostEventsFile = cfg.DataDir + "/cost_events.jsonl"

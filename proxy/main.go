@@ -29,6 +29,9 @@ func main() {
 	// Initialize the OpenAI adapter.
 	openaiAdapter := adapters.NewOpenAIAdapter(cfg.OpenAIBaseURL)
 
+	// Initialize the response cache.
+	responseCache := NewResponseCache(cfg.CacheMaxEntries, cfg.CacheTTLSeconds, cfg.CacheEnabled)
+
 	// Initialize the budget tracker.
 	budgetsFile := cfg.DataDir + "/budgets.json"
 	budgetTracker := NewBudgetTracker(budgetsFile, cfg.CostEventsFile)
@@ -43,8 +46,11 @@ func main() {
 	// Stats endpoint.
 	mux.HandleFunc("/stats", StatsHandler(eventLogger))
 
+	// Cache stats endpoint.
+	mux.HandleFunc("/cache/stats", CacheStatsHandler(responseCache))
+
 	// Proxy handler for LLM API routes.
-	proxyHandler := NewProxyHandler(anthropicAdapter, openaiAdapter, eventLogger, budgetTracker)
+	proxyHandler := NewProxyHandler(anthropicAdapter, openaiAdapter, eventLogger, budgetTracker, responseCache)
 	mux.Handle("/v1/", proxyHandler)
 
 	// Wrap with CORS middleware.
@@ -65,6 +71,7 @@ func main() {
 	log.Printf("  Log level:      %s", cfg.LogLevel)
 	log.Printf("  Budgets file:   %s", budgetsFile)
 	log.Printf("  Providers:      anthropic (%s), openai (%s)", cfg.AnthropicBaseURL, cfg.OpenAIBaseURL)
+	log.Printf("  Cache:          enabled=%v max_entries=%d ttl=%ds", cfg.CacheEnabled, cfg.CacheMaxEntries, cfg.CacheTTLSeconds)
 
 	// Graceful shutdown.
 	errCh := make(chan error, 1)
@@ -91,6 +98,9 @@ func main() {
 	if err := server.Shutdown(ctx); err != nil {
 		log.Printf("Server shutdown error: %v", err)
 	}
+
+	// Close the response cache.
+	responseCache.Close()
 
 	// Close the budget tracker.
 	budgetTracker.Close()

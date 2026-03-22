@@ -27,6 +27,9 @@ type CostEvent struct {
 	Team             string  `json:"team,omitempty"`
 	Feature          string  `json:"feature,omitempty"`
 	CustomerTier     string  `json:"customer_tier,omitempty"`
+	SessionID        string  `json:"session_id,omitempty"`
+	TraceID          string  `json:"trace_id,omitempty"`
+	CacheHit         bool    `json:"cache_hit,omitempty"`
 	TokenSummary     string  `json:"token_summary"`
 }
 

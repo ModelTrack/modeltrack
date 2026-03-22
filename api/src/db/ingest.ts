@@ -36,8 +36,9 @@ function ingestNewEvents(): number {
     `INSERT OR IGNORE INTO cost_events
     (event_id, timestamp, provider, model, input_tokens, output_tokens,
      cache_read_tokens, cache_write_tokens, cost_usd, latency_ms,
-     status_code, is_streaming, app_id, team, feature, customer_tier)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     status_code, is_streaming, app_id, team, feature, customer_tier,
+     session_id, trace_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
 
   let ingested = 0;
@@ -63,7 +64,9 @@ function ingestNewEvents(): number {
           event.app_id || "",
           event.team || "",
           event.feature || "",
-          event.customer_tier || ""
+          event.customer_tier || "",
+          event.session_id || "",
+          event.trace_id || ""
         );
         ingested++;
       } catch (err) {
