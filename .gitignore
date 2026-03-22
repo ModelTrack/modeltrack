@@ -1,0 +1,24 @@
+# Data
+data/*.jsonl
+data/*.db
+
+# Dependencies
+node_modules/
+api/node_modules/
+dashboard/node_modules/
+
+# Build artifacts
+api/dist/
+dashboard/dist/
+proxy/costtrack-proxy
+
+# Environment
+.env
+api/.env
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
