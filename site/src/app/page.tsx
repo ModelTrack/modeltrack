@@ -40,7 +40,7 @@ const navLinks = [
   { label: "Features", href: "#features" },
   { label: "Pricing", href: "#pricing" },
   { label: "Docs", href: "#" },
-  { label: "GitHub", href: "#" },
+  { label: "GitHub", href: "https://github.com/ModelTrack/modeltrack" },
 ];
 
 const metrics = [
@@ -245,7 +245,8 @@ export default function Home() {
               <ArrowRight className="size-4" />
             </Link>
             <Link
-              href="#"
+              href="https://github.com/ModelTrack/modeltrack"
+              target="_blank"
               className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 px-6 py-3 text-sm font-medium text-gray-300 hover:bg-white/5 hover:text-white transition-colors duration-200"
             >
               <Github className="size-4" />
