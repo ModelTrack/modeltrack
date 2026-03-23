@@ -16,6 +16,8 @@ import overviewRoutes from "./routes/overview";
 import reportsRoutes from "./routes/reports";
 import forecastRoutes from "./routes/forecast";
 import estimatorRoutes from "./routes/estimator";
+import segmentsRoutes from "./routes/segments";
+import infrastructureRoutes from "./routes/infrastructure";
 import { startScheduler } from "./services/scheduler";
 
 const app = express();
@@ -47,6 +49,8 @@ app.use("/api/overview", overviewRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/forecast", forecastRoutes);
 app.use("/api/estimator", estimatorRoutes);
+app.use("/api/segments", segmentsRoutes);
+app.use("/api/infrastructure", infrastructureRoutes);
 
 // Start server
 function main() {

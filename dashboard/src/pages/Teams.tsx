@@ -1,6 +1,6 @@
 import { useApi } from '../hooks/useApi';
 import TeamBreakdown from '../components/TeamBreakdown';
-import type { TeamRow } from '../types';
+import type { TeamRow, SegmentSpend } from '../types';
 import { formatCurrency, formatNumber } from '../lib/format';
 
 interface ApiTeamRow {
@@ -11,8 +11,13 @@ interface ApiTeamRow {
   by_app: Record<string, number>;
 }
 
+interface SegmentRow extends SegmentSpend {
+  by_model: Array<{ model: string; spend: number; request_count: number }>;
+}
+
 export default function Teams() {
   const { data: raw, loading, error } = useApi<ApiTeamRow[]>('/api/teams');
+  const { data: segments } = useApi<SegmentRow[]>('/api/segments');
 
   if (loading && !raw) {
     return (
@@ -80,6 +85,48 @@ export default function Teams() {
           </table>
         </div>
       </div>
+
+      {segments && segments.length > 0 && (
+        <>
+          <h3 className="text-xl font-semibold text-gray-100 mt-8">Spend by Customer Tier</h3>
+
+          <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead>
+                  <tr className="border-b border-gray-800 text-gray-400">
+                    <th className="px-4 py-3 font-medium">Tier</th>
+                    <th className="px-4 py-3 font-medium">Requests</th>
+                    <th className="px-4 py-3 font-medium">Avg Cost/Req</th>
+                    <th className="px-4 py-3 font-medium">Total Cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {segments.map((seg) => (
+                    <tr
+                      key={seg.customer_tier}
+                      className="border-b border-gray-800/50 hover:bg-gray-800/30"
+                    >
+                      <td className="px-4 py-3 font-medium text-gray-100 capitalize">
+                        {seg.customer_tier}
+                      </td>
+                      <td className="px-4 py-3 text-gray-300">
+                        {formatNumber(seg.request_count)}
+                      </td>
+                      <td className="px-4 py-3 text-gray-300">
+                        {formatCurrency(seg.avg_cost_per_request)}
+                      </td>
+                      <td className="px-4 py-3 text-emerald-400">
+                        {formatCurrency(seg.total_cost)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

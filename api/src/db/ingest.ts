@@ -38,8 +38,13 @@ function ingestNewEvents(): number {
      cache_read_tokens, cache_write_tokens, cost_usd, latency_ms,
      status_code, is_streaming, app_id, team, feature, customer_tier,
      session_id, trace_id, prompt_hash, system_prompt_tokens,
-     user_prompt_tokens, prompt_template_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     user_prompt_tokens, prompt_template_id,
+     event_type, service, resource_id, region,
+     instance_type, gpu_type, gpu_count, gpu_utilization_pct,
+     namespace, pod_name, job_name,
+     cache_hit, routed_from, routed_to, routing_rule)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
 
   let ingested = 0;
@@ -71,7 +76,22 @@ function ingestNewEvents(): number {
           event.prompt_hash || "",
           event.system_prompt_tokens || 0,
           event.user_prompt_tokens || 0,
-          event.prompt_template_id || ""
+          event.prompt_template_id || "",
+          event.event_type || "llm_api",
+          event.service || null,
+          event.resource_id || null,
+          event.region || null,
+          event.instance_type || null,
+          event.gpu_type || null,
+          event.gpu_count || null,
+          event.gpu_utilization_pct || null,
+          event.namespace || null,
+          event.pod_name || null,
+          event.job_name || null,
+          event.cache_hit ? 1 : 0,
+          event.routed_from || null,
+          event.routed_to || null,
+          event.routing_rule || null
         );
         ingested++;
       } catch (err) {

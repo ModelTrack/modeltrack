@@ -9,8 +9,9 @@ import Reports from './pages/Reports';
 import Alerts from './pages/Alerts';
 import Estimator from './pages/Estimator';
 import Forecast from './pages/Forecast';
+import Infrastructure from './pages/Infrastructure';
 
-type Page = 'overview' | 'models' | 'features' | 'prompts' | 'teams' | 'sessions' | 'reports' | 'forecast' | 'alerts' | 'estimator';
+type Page = 'overview' | 'models' | 'features' | 'prompts' | 'teams' | 'sessions' | 'reports' | 'forecast' | 'alerts' | 'estimator' | 'infrastructure';
 
 const navItems: { key: Page; label: string }[] = [
   { key: 'overview', label: 'Overview' },
@@ -23,6 +24,7 @@ const navItems: { key: Page; label: string }[] = [
   { key: 'forecast', label: 'Forecast' },
   { key: 'alerts', label: 'Alerts' },
   { key: 'estimator', label: 'Estimator' },
+  { key: 'infrastructure', label: 'Infrastructure' },
 ];
 
 export default function App() {
@@ -67,6 +69,7 @@ export default function App() {
         {page === 'forecast' && <Forecast />}
         {page === 'alerts' && <Alerts />}
         {page === 'estimator' && <Estimator />}
+        {page === 'infrastructure' && <Infrastructure />}
       </main>
     </div>
   );

@@ -6,7 +6,7 @@ const router = Router();
 // GET /api/sessions — list recent sessions with total cost, request count, duration.
 router.get("/", (req: Request, res: Response) => {
   try {
-    const { team, app_id, start_date, end_date, limit = "50" } = req.query;
+    const { team, app_id, start_date, end_date, trace_id, limit = "50" } = req.query;
 
     let query = `
       SELECT
@@ -39,6 +39,10 @@ router.get("/", (req: Request, res: Response) => {
     if (end_date) {
       query += ` AND timestamp <= ?`;
       params.push(end_date);
+    }
+    if (trace_id) {
+      query += ` AND session_id IN (SELECT DISTINCT session_id FROM cost_events WHERE trace_id = ?)`;
+      params.push(trace_id);
     }
 
     query += ` GROUP BY session_id ORDER BY last_seen DESC LIMIT ?`;
@@ -89,9 +93,18 @@ router.get("/:id", (req: Request, res: Response) => {
       return;
     }
 
+    // Collect distinct trace_ids from events
+    const traceIds = [
+      ...new Set(
+        (events as any[])
+          .map((e) => e.trace_id)
+          .filter((id) => id && id !== "")
+      ),
+    ];
+
     res.json({
       data: {
-        summary,
+        summary: { ...(summary as any), trace_ids: traceIds },
         events,
       },
       error: null,

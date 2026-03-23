@@ -15,6 +15,8 @@
  *   COSTTRACK_FEATURE=my-feature
  *   COSTTRACK_CUSTOMER_TIER=enterprise
  *   COSTTRACK_SESSION_ID=session-123  (optional)
+ *   COSTTRACK_TRACE_ID=trace-456  (optional)
+ *   COSTTRACK_PROMPT_TEMPLATE=template-id  (optional)
  */
 
 // ---------------------------------------------------------------------------
@@ -28,6 +30,8 @@ interface CostTrackConfig {
   feature: string;
   customerTier: string;
   sessionId: string;
+  traceId: string;
+  promptTemplate: string;
 }
 
 const config: CostTrackConfig = {
@@ -37,10 +41,13 @@ const config: CostTrackConfig = {
   feature: process.env.COSTTRACK_FEATURE || "",
   customerTier: process.env.COSTTRACK_CUSTOMER_TIER || "",
   sessionId: process.env.COSTTRACK_SESSION_ID || "",
+  traceId: process.env.COSTTRACK_TRACE_ID || "",
+  promptTemplate: process.env.COSTTRACK_PROMPT_TEMPLATE || "",
 };
 
-// Session ID override for withSession().
+// Session ID and trace ID overrides for withSession().
 let _activeSessionId: string | null = null;
+let _activeTraceId: string | null = null;
 
 export function configure(opts: Partial<Omit<CostTrackConfig, "proxyUrl"> & { proxyUrl: string }>): void {
   if (opts.proxyUrl) config.proxyUrl = opts.proxyUrl;
@@ -49,6 +56,8 @@ export function configure(opts: Partial<Omit<CostTrackConfig, "proxyUrl"> & { pr
   if (opts.feature) config.feature = opts.feature;
   if (opts.customerTier) config.customerTier = opts.customerTier;
   if (opts.sessionId) config.sessionId = opts.sessionId;
+  if (opts.traceId) config.traceId = opts.traceId;
+  if (opts.promptTemplate) config.promptTemplate = opts.promptTemplate;
 
   // Re-patch so new clients pick up changes.
   patchAll();
@@ -61,14 +70,25 @@ export function configure(opts: Partial<Omit<CostTrackConfig, "proxyUrl"> & { pr
  *   await withSession("user-query-123", async () => {
  *     const response = await client.messages.create({ ... });
  *   });
+ *
+ *   await withSession("session-123", async () => { ... }, { traceId: "trace-456" });
  */
-export async function withSession<T>(sessionId: string, fn: () => T | Promise<T>): Promise<T> {
-  const previous = _activeSessionId;
+export async function withSession<T>(
+  sessionId: string,
+  fn: () => T | Promise<T>,
+  opts?: { traceId?: string },
+): Promise<T> {
+  const previousSession = _activeSessionId;
+  const previousTrace = _activeTraceId;
   _activeSessionId = sessionId;
+  if (opts?.traceId) {
+    _activeTraceId = opts.traceId;
+  }
   try {
     return await fn();
   } finally {
-    _activeSessionId = previous;
+    _activeSessionId = previousSession;
+    _activeTraceId = previousTrace;
   }
 }
 
@@ -83,10 +103,15 @@ function buildHeaders(): Record<string, string> {
   if (config.app) headers["X-CostTrack-App"] = config.app;
   if (config.feature) headers["X-CostTrack-Feature"] = config.feature;
   if (config.customerTier) headers["X-CostTrack-Customer-Tier"] = config.customerTier;
+  if (config.promptTemplate) headers["X-CostTrack-Prompt-Template"] = config.promptTemplate;
 
   // Active session from withSession() overrides config.
   const sessionId = _activeSessionId || config.sessionId;
   if (sessionId) headers["X-CostTrack-Session-ID"] = sessionId;
+
+  // Active trace ID from withSession() overrides config.
+  const traceId = _activeTraceId || config.traceId;
+  if (traceId) headers["X-CostTrack-Trace-ID"] = traceId;
 
   return headers;
 }

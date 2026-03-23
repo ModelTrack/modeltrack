@@ -831,6 +831,39 @@ func (h *ProxyHandler) handleBedrockMessages(w http.ResponseWriter, r *http.Requ
 	// Extract prompt analysis (fingerprint, token breakdown).
 	pa := extractPromptAnalysis(&fields, "anthropic", promptTemplateID)
 
+	// --- Model routing ---
+	var routingDecision RoutingDecision
+	if h.router != nil && !h.router.ShouldSkipRouting(r.Header.Get(h.router.GetOptOutHeader())) {
+		budgetPct := 0.0
+		if h.budget != nil && team != "" {
+			budgetPct = h.budget.GetBudgetPercent(team, appID)
+		}
+		routingDecision = h.router.Route("anthropic", fields.Model, team, appID, budgetPct)
+		if routingDecision.Routed {
+			if routingDecision.Action == "block_expensive" {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusTooManyRequests)
+				msg := fmt.Sprintf(
+					`{"error":{"type":"model_blocked","message":"Expensive model blocked: team at %.0f%% of budget. Use %s instead."}}`,
+					budgetPct*100, suggestCheapModel("anthropic"))
+				w.Write([]byte(msg))
+				return
+			}
+			var bodyMap map[string]interface{}
+			if err := json.Unmarshal(bodyBytes, &bodyMap); err == nil {
+				bodyMap["model"] = routingDecision.NewModel
+				if newBody, err := json.Marshal(bodyMap); err == nil {
+					bodyBytes = newBody
+					fields.Model = routingDecision.NewModel
+				}
+			}
+			w.Header().Set("X-CostTrack-Routed", "true")
+			w.Header().Set("X-CostTrack-Original-Model", routingDecision.OriginalModel)
+			w.Header().Set("X-CostTrack-Routed-To", routingDecision.NewModel)
+			w.Header().Set("X-CostTrack-Route-Reason", routingDecision.Reason)
+		}
+	}
+
 	// Restore the request body for the adapter.
 	r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 
@@ -879,6 +912,9 @@ func (h *ProxyHandler) handleBedrockMessages(w http.ResponseWriter, r *http.Requ
 		CustomerTier:       customerTier,
 		SessionID:          sessionID,
 		TraceID:            traceID,
+		RoutedFrom:         routingDecision.OriginalModel,
+		RoutedTo:           routedToField(routingDecision),
+		RoutingRule:        routingDecision.RuleName,
 		TokenSummary:       summary,
 		PromptHash:         pa.PromptHash,
 		SystemPromptTokens: pa.SystemPromptTokens,
@@ -953,6 +989,39 @@ func (h *ProxyHandler) handleAzureChatCompletions(w http.ResponseWriter, r *http
 	// Extract prompt analysis (fingerprint, token breakdown).
 	pa := extractPromptAnalysis(&fields, "openai", promptTemplateID)
 
+	// --- Model routing ---
+	var routingDecision RoutingDecision
+	if h.router != nil && !h.router.ShouldSkipRouting(r.Header.Get(h.router.GetOptOutHeader())) {
+		budgetPct := 0.0
+		if h.budget != nil && team != "" {
+			budgetPct = h.budget.GetBudgetPercent(team, appID)
+		}
+		routingDecision = h.router.Route("openai", fields.Model, team, appID, budgetPct)
+		if routingDecision.Routed {
+			if routingDecision.Action == "block_expensive" {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusTooManyRequests)
+				msg := fmt.Sprintf(
+					`{"error":{"type":"model_blocked","message":"Expensive model blocked: team at %.0f%% of budget. Use %s instead."}}`,
+					budgetPct*100, suggestCheapModel("openai"))
+				w.Write([]byte(msg))
+				return
+			}
+			var bodyMap map[string]interface{}
+			if err := json.Unmarshal(bodyBytes, &bodyMap); err == nil {
+				bodyMap["model"] = routingDecision.NewModel
+				if newBody, err := json.Marshal(bodyMap); err == nil {
+					bodyBytes = newBody
+					fields.Model = routingDecision.NewModel
+				}
+			}
+			w.Header().Set("X-CostTrack-Routed", "true")
+			w.Header().Set("X-CostTrack-Original-Model", routingDecision.OriginalModel)
+			w.Header().Set("X-CostTrack-Routed-To", routingDecision.NewModel)
+			w.Header().Set("X-CostTrack-Route-Reason", routingDecision.Reason)
+		}
+	}
+
 	// Restore the request body for the adapter.
 	r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 
@@ -997,6 +1066,9 @@ func (h *ProxyHandler) handleAzureChatCompletions(w http.ResponseWriter, r *http
 		CustomerTier:       customerTier,
 		SessionID:          sessionID,
 		TraceID:            traceID,
+		RoutedFrom:         routingDecision.OriginalModel,
+		RoutedTo:           routedToField(routingDecision),
+		RoutingRule:        routingDecision.RuleName,
 		TokenSummary:       summary,
 		PromptHash:         pa.PromptHash,
 		SystemPromptTokens: pa.SystemPromptTokens,

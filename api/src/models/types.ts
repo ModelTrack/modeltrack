@@ -21,6 +21,21 @@ export interface CostEvent {
   system_prompt_tokens: number;
   user_prompt_tokens: number;
   prompt_template_id: string;
+  event_type?: string;
+  service?: string;
+  resource_id?: string;
+  region?: string;
+  instance_type?: string;
+  gpu_type?: string;
+  gpu_count?: number;
+  gpu_utilization_pct?: number;
+  namespace?: string;
+  pod_name?: string;
+  job_name?: string;
+  cache_hit?: boolean;
+  routed_from?: string;
+  routed_to?: string;
+  routing_rule?: string;
 }
 
 export interface SpendSummary {
@@ -207,4 +222,11 @@ export interface ForecastData {
   forecast: ForecastPoint[];
   summary: ForecastSummary;
   scenarios: ForecastScenarios;
+}
+
+export interface SegmentSpend {
+  customer_tier: string;
+  total_cost: number;
+  request_count: number;
+  avg_cost_per_request: number;
 }

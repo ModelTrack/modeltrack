@@ -113,6 +113,29 @@ router.get("/budgets", (req: Request, res: Response) => {
   }
 });
 
+// DELETE /api/alerts/budgets/:id — delete a budget by ID
+router.delete("/budgets/:id", (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const db = getDatabase();
+
+    const result = db.prepare(`DELETE FROM budgets WHERE id = ?`).run(id);
+
+    if (result.changes === 0) {
+      res.status(404).json({
+        data: null,
+        error: `Budget with id "${id}" not found.`,
+      });
+      return;
+    }
+
+    res.json({ data: { deleted: true, id }, error: null });
+  } catch (err: any) {
+    console.error("Error in DELETE /api/alerts/budgets/:id:", err);
+    res.status(500).json({ data: null, error: err.message });
+  }
+});
+
 // POST /api/alerts/test-slack — send a test message to verify Slack webhook
 router.post("/test-slack", async (req: Request, res: Response) => {
   try {

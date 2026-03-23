@@ -13,10 +13,11 @@ interface SessionEvent {
   output_tokens: number;
   latency_ms: number;
   feature: string;
+  trace_id: string;
 }
 
 interface SessionDetail {
-  summary: SessionCost;
+  summary: SessionCost & { trace_ids: string[] };
   events: SessionEvent[];
 }
 
@@ -59,6 +60,14 @@ function SessionDetailView({ sessionId }: { sessionId: string }) {
     <tr>
       <td colSpan={7} className="p-0">
         <div className="bg-gray-800/50 px-6 py-4 border-t border-gray-700">
+          {data.summary.trace_ids && data.summary.trace_ids.length > 0 && (
+            <div className="mb-4">
+              <span className="text-xs text-gray-400 uppercase tracking-wide">Trace IDs: </span>
+              <span className="text-xs text-gray-300 font-mono">
+                {data.summary.trace_ids.join(', ')}
+              </span>
+            </div>
+          )}
           <div className="text-xs text-gray-400 uppercase tracking-wide mb-3">
             Events in Session
           </div>
@@ -68,6 +77,7 @@ function SessionDetailView({ sessionId }: { sessionId: string }) {
                 <th className="pb-2 font-medium">Timestamp</th>
                 <th className="pb-2 font-medium">Model</th>
                 <th className="pb-2 font-medium">Feature</th>
+                <th className="pb-2 font-medium">Trace ID</th>
                 <th className="pb-2 font-medium">Tokens (in/out)</th>
                 <th className="pb-2 font-medium">Latency</th>
                 <th className="pb-2 font-medium">Cost</th>
@@ -81,6 +91,9 @@ function SessionDetailView({ sessionId }: { sessionId: string }) {
                   </td>
                   <td className="py-2 text-gray-300">{event.model}</td>
                   <td className="py-2 text-gray-400">{event.feature || '-'}</td>
+                  <td className="py-2 text-gray-400 font-mono text-xs" title={event.trace_id}>
+                    {event.trace_id ? truncateId(event.trace_id) : '-'}
+                  </td>
                   <td className="py-2 text-gray-300">
                     {formatNumber(event.input_tokens)} / {formatNumber(event.output_tokens)}
                   </td>

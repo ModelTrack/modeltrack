@@ -12,6 +12,7 @@ router.get("/", (req: Request, res: Response) => {
       team,
       app_id,
       model,
+      customer_tier,
       granularity = "day",
     } = req.query;
 
@@ -54,6 +55,10 @@ router.get("/", (req: Request, res: Response) => {
       query += ` AND model = ?`;
       params.push(model);
     }
+    if (customer_tier) {
+      query += ` AND customer_tier = ?`;
+      params.push(customer_tier);
+    }
 
     query += ` GROUP BY period ORDER BY period ASC`;
 
@@ -70,7 +75,7 @@ router.get("/", (req: Request, res: Response) => {
 // GET /api/spend/summary — totals for a date range
 router.get("/summary", (req: Request, res: Response) => {
   try {
-    const { start_date, end_date } = req.query;
+    const { start_date, end_date, customer_tier } = req.query;
 
     let whereClause = "WHERE 1=1";
     const params: any[] = [];
@@ -82,6 +87,10 @@ router.get("/summary", (req: Request, res: Response) => {
     if (end_date) {
       whereClause += ` AND timestamp <= ?`;
       params.push(end_date);
+    }
+    if (customer_tier) {
+      whereClause += ` AND customer_tier = ?`;
+      params.push(customer_tier);
     }
 
     const db = getDatabase();

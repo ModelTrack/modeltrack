@@ -12,6 +12,8 @@ Usage:
     #   COSTTRACK_FEATURE=my-feature
     #   COSTTRACK_CUSTOMER_TIER=enterprise
     #   COSTTRACK_SESSION_ID=session-123  (optional)
+    #   COSTTRACK_TRACE_ID=trace-456  (optional)
+    #   COSTTRACK_PROMPT_TEMPLATE=template-id  (optional)
 """
 
 import contextlib
@@ -32,6 +34,8 @@ _config = {
     "feature": os.environ.get("COSTTRACK_FEATURE", ""),
     "customer_tier": os.environ.get("COSTTRACK_CUSTOMER_TIER", ""),
     "session_id": os.environ.get("COSTTRACK_SESSION_ID", ""),
+    "trace_id": os.environ.get("COSTTRACK_TRACE_ID", ""),
+    "prompt_template": os.environ.get("COSTTRACK_PROMPT_TEMPLATE", ""),
 }
 
 # Thread-local storage for session context.
@@ -45,6 +49,8 @@ def configure(
     feature: str = "",
     customer_tier: str = "",
     session_id: str = "",
+    trace_id: str = "",
+    prompt_template: str = "",
 ) -> None:
     """Explicitly configure CostTrack. Overrides environment variables."""
     if proxy_url:
@@ -59,25 +65,36 @@ def configure(
         _config["customer_tier"] = customer_tier
     if session_id:
         _config["session_id"] = session_id
+    if trace_id:
+        _config["trace_id"] = trace_id
+    if prompt_template:
+        _config["prompt_template"] = prompt_template
 
     # Re-patch with updated config so new clients pick up the changes.
     _patch_all()
 
 
 @contextlib.contextmanager
-def session(session_id: str):
+def session(session_id: str, trace_id: str = ""):
     """Context manager that tags all LLM calls within the block with a session ID.
 
     Usage:
         with costtrack.session("user-query-123"):
             response = client.messages.create(...)
+
+        with costtrack.session("session-123", trace_id="trace-456"):
+            response = client.messages.create(...)
     """
-    previous = getattr(_local, "session_id", None)
+    previous_session = getattr(_local, "session_id", None)
+    previous_trace = getattr(_local, "trace_id", None)
     _local.session_id = session_id
+    if trace_id:
+        _local.trace_id = trace_id
     try:
         yield
     finally:
-        _local.session_id = previous
+        _local.session_id = previous_session
+        _local.trace_id = previous_trace
 
 
 # ---------------------------------------------------------------------------
@@ -93,6 +110,8 @@ def _build_headers() -> dict:
         "X-CostTrack-Feature": "feature",
         "X-CostTrack-Customer-Tier": "customer_tier",
         "X-CostTrack-Session-ID": "session_id",
+        "X-CostTrack-Trace-ID": "trace_id",
+        "X-CostTrack-Prompt-Template": "prompt_template",
     }
     for header, key in mapping.items():
         value = _config.get(key, "")
@@ -103,6 +122,11 @@ def _build_headers() -> dict:
     thread_session = getattr(_local, "session_id", None)
     if thread_session:
         headers["X-CostTrack-Session-ID"] = thread_session
+
+    # Thread-local trace ID overrides the global config.
+    thread_trace = getattr(_local, "trace_id", None)
+    if thread_trace:
+        headers["X-CostTrack-Trace-ID"] = thread_trace
 
     return headers
 

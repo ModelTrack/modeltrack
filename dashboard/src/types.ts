@@ -169,3 +169,24 @@ export interface ForecastData {
   summary: ForecastSummary;
   scenarios: ForecastScenarios;
 }
+
+export interface SegmentSpend {
+  customer_tier: string;
+  total_cost: number;
+  request_count: number;
+  avg_cost_per_request: number;
+}
+
+export interface InfrastructureData {
+  total_infra_cost: number;
+  by_service: Array<{ service: string; cost: number; events: number }>;
+  by_team: Array<{ team: string; cost: number; events: number }>;
+  gpu_utilization: Array<{
+    resource_id: string;
+    gpu_type: string;
+    avg_utilization: number;
+    cost: number;
+    team: string;
+  }>;
+  daily_trend: Array<{ date: string; cost: number }>;
+}
