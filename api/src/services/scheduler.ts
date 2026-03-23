@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import { getDatabase } from "../db/init";
 import { sendAlert, sendBudgetWarning, sendDailySummary, sendWeeklySummary, sendScheduledReport } from "./slack";
 import { generateExecutiveReport } from "../routes/reports";
+import { detectAndPersistAnomalies } from "../routes/alerts";
 import type { Alert } from "../models/types";
 import type { DailySummary, WeeklySummary } from "./slack";
 
@@ -42,6 +43,9 @@ function clearSentAlertsDaily(): void {
 
 async function checkAnomalies(): Promise<void> {
   clearSentAlertsDaily();
+
+  // Persist anomalies to the alerts table (moved from GET /api/alerts handler).
+  detectAndPersistAnomalies();
 
   try {
     const db = getDatabase();

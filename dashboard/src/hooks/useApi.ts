@@ -13,6 +13,7 @@ export function useApi<T>(url: string): {
   const hasFetchedOnce = useRef(false);
   const intervalRef = useRef<number | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const prevDataRef = useRef<string | null>(null);
 
   const fetchData = useCallback(async () => {
     // Abort any in-flight request
@@ -31,10 +32,12 @@ export function useApi<T>(url: string): {
       }
       const json = await res.json();
       // API wraps responses in { data: ..., error: ... }
-      if (json && typeof json === 'object' && 'data' in json) {
-        setData(json.data);
-      } else {
-        setData(json);
+      const newJson = json && typeof json === 'object' && 'data' in json ? json.data : json;
+      // Only update state if data actually changed to avoid unnecessary re-renders.
+      const serialized = JSON.stringify(newJson);
+      if (serialized !== prevDataRef.current) {
+        prevDataRef.current = serialized;
+        setData(newJson);
       }
       hasFetchedOnce.current = true;
     } catch (err) {

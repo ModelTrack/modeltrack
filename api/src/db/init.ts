@@ -39,6 +39,12 @@ export function initDatabase(): Database.Database {
     )
   `);
 
+  // Add indexes for common query patterns.
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_cost_events_timestamp ON cost_events(timestamp)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_cost_events_team_timestamp ON cost_events(team, timestamp)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_cost_events_model ON cost_events(model)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_cost_events_session ON cost_events(session_id)`);
+
   // daily_spend view is created later with provider column
 
   db.exec(`

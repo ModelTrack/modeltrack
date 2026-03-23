@@ -101,7 +101,7 @@ func extractPromptAnalysis(fields *llmRequestFields, provider string, templateHe
 	var userTokens int
 
 	// For Anthropic, the system prompt can be in the top-level "system" field.
-	if provider == "anthropic" && len(fields.System) > 0 {
+	if provider == ProviderAnthropic && len(fields.System) > 0 {
 		// Try parsing as a plain string first.
 		var sysStr string
 		if err := json.Unmarshal(fields.System, &sysStr); err == nil {
@@ -220,7 +220,7 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 	}
 
 	// Extract prompt analysis (fingerprint, token breakdown).
-	pa := extractPromptAnalysis(&fields, "anthropic", promptTemplateID)
+	pa := extractPromptAnalysis(&fields, ProviderAnthropic, promptTemplateID)
 
 	// --- Model routing ---
 	var routingDecision RoutingDecision
@@ -230,7 +230,7 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 			budgetPct = h.budget.GetBudgetPercent(team, appID)
 		}
 
-		routingDecision = h.router.Route("anthropic", fields.Model, team, appID, budgetPct)
+		routingDecision = h.router.Route(ProviderAnthropic, fields.Model, team, appID, budgetPct)
 
 		if routingDecision.Routed {
 			if routingDecision.Action == "block_expensive" {
@@ -238,7 +238,7 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 				w.WriteHeader(http.StatusTooManyRequests)
 				msg := fmt.Sprintf(
 					`{"error":{"type":"model_blocked","message":"Expensive model blocked: team at %.0f%% of budget. Use %s instead."}}`,
-					budgetPct*100, suggestCheapModel("anthropic"))
+					budgetPct*100, suggestCheapModel(ProviderAnthropic))
 				w.Write([]byte(msg))
 				return
 			}
@@ -276,7 +276,7 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 
 	// Check cache for a hit.
 	if cacheable {
-		cacheKey = GenerateKey("anthropic", fields.Model, fields.Messages)
+		cacheKey = GenerateKey(ProviderAnthropic, fields.Model, fields.Messages)
 
 		if entry, ok := h.cache.Get(cacheKey); ok {
 			// Cache HIT — return cached response directly.
@@ -290,7 +290,7 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 			event := CostEvent{
 				EventID:            uuid.New().String(),
 				Timestamp:          time.Now().UTC().Format(time.RFC3339Nano),
-				Provider:           "anthropic",
+				Provider:           ProviderAnthropic,
 				Model:              fields.Model,
 				CostUSD:            0,
 				StatusCode:         http.StatusOK,
@@ -336,6 +336,16 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	// Calculate cost once, before recorder handling.
+	cost := CalculateCost(
+		ProviderAnthropic,
+		result.Usage.Model,
+		result.Usage.InputTokens,
+		result.Usage.OutputTokens,
+		result.Usage.CacheReadTokens,
+		result.Usage.CacheWriteTokens,
+	)
+
 	// If we used a recorder, copy the response to the real writer and cache it.
 	if recorder != nil {
 		recResult := recorder.Result()
@@ -357,14 +367,6 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 
 		// Cache the response if the upstream returned 200.
 		if recResult.StatusCode == http.StatusOK {
-			cost := CalculateCost(
-				"anthropic",
-				result.Usage.Model,
-				result.Usage.InputTokens,
-				result.Usage.OutputTokens,
-				result.Usage.CacheReadTokens,
-				result.Usage.CacheWriteTokens,
-			)
 			h.cache.Set(cacheKey, CacheEntry{
 				ResponseBody: respBody,
 				ContentType:  contentType,
@@ -373,16 +375,6 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 			})
 		}
 	}
-
-	// Calculate cost.
-	cost := CalculateCost(
-		"anthropic",
-		result.Usage.Model,
-		result.Usage.InputTokens,
-		result.Usage.OutputTokens,
-		result.Usage.CacheReadTokens,
-		result.Usage.CacheWriteTokens,
-	)
 
 	// Build token summary.
 	summary := fmt.Sprintf("in=%d out=%d cache_read=%d cache_write=%d",
@@ -396,7 +388,7 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 	event := CostEvent{
 		EventID:            uuid.New().String(),
 		Timestamp:          time.Now().UTC().Format(time.RFC3339Nano),
-		Provider:           "anthropic",
+		Provider:           ProviderAnthropic,
 		Model:              result.Usage.Model,
 		InputTokens:        result.Usage.InputTokens,
 		OutputTokens:       result.Usage.OutputTokens,
@@ -426,7 +418,7 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 
 	// Record estimated routing savings.
 	if routingDecision.Routed && routingDecision.Action == "downgrade" && h.router != nil {
-		originalCost := CalculateCost("anthropic", routingDecision.OriginalModel,
+		originalCost := CalculateCost(ProviderAnthropic, routingDecision.OriginalModel,
 			result.Usage.InputTokens, result.Usage.OutputTokens,
 			result.Usage.CacheReadTokens, result.Usage.CacheWriteTokens)
 		if originalCost > cost {
@@ -492,7 +484,7 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 	}
 
 	// Extract prompt analysis (fingerprint, token breakdown).
-	pa := extractPromptAnalysis(&fields, "openai", promptTemplateID)
+	pa := extractPromptAnalysis(&fields, ProviderOpenAI, promptTemplateID)
 
 	// --- Model routing ---
 	var routingDecision RoutingDecision
@@ -502,7 +494,7 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 			budgetPct = h.budget.GetBudgetPercent(team, appID)
 		}
 
-		routingDecision = h.router.Route("openai", fields.Model, team, appID, budgetPct)
+		routingDecision = h.router.Route(ProviderOpenAI, fields.Model, team, appID, budgetPct)
 
 		if routingDecision.Routed {
 			if routingDecision.Action == "block_expensive" {
@@ -510,7 +502,7 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 				w.WriteHeader(http.StatusTooManyRequests)
 				msg := fmt.Sprintf(
 					`{"error":{"type":"model_blocked","message":"Expensive model blocked: team at %.0f%% of budget. Use %s instead."}}`,
-					budgetPct*100, suggestCheapModel("openai"))
+					budgetPct*100, suggestCheapModel(ProviderOpenAI))
 				w.Write([]byte(msg))
 				return
 			}
@@ -548,7 +540,7 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 
 	// Check cache for a hit.
 	if cacheable {
-		cacheKey = GenerateKey("openai", fields.Model, fields.Messages)
+		cacheKey = GenerateKey(ProviderOpenAI, fields.Model, fields.Messages)
 
 		if entry, ok := h.cache.Get(cacheKey); ok {
 			// Cache HIT — return cached response directly.
@@ -562,7 +554,7 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 			event := CostEvent{
 				EventID:            uuid.New().String(),
 				Timestamp:          time.Now().UTC().Format(time.RFC3339Nano),
-				Provider:           "openai",
+				Provider:           ProviderOpenAI,
 				Model:              fields.Model,
 				CostUSD:            0,
 				StatusCode:         http.StatusOK,
@@ -608,6 +600,16 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 		return
 	}
 
+	// Calculate cost once, before recorder handling.
+	cost := CalculateCost(
+		ProviderOpenAI,
+		result.Usage.Model,
+		result.Usage.InputTokens,
+		result.Usage.OutputTokens,
+		result.Usage.CacheReadTokens,
+		result.Usage.CacheWriteTokens,
+	)
+
 	// If we used a recorder, copy the response to the real writer and cache it.
 	if recorder != nil {
 		recResult := recorder.Result()
@@ -629,14 +631,6 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 
 		// Cache the response if the upstream returned 200.
 		if recResult.StatusCode == http.StatusOK {
-			cost := CalculateCost(
-				"openai",
-				result.Usage.Model,
-				result.Usage.InputTokens,
-				result.Usage.OutputTokens,
-				result.Usage.CacheReadTokens,
-				result.Usage.CacheWriteTokens,
-			)
 			h.cache.Set(cacheKey, CacheEntry{
 				ResponseBody: respBody,
 				ContentType:  contentType,
@@ -645,16 +639,6 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 			})
 		}
 	}
-
-	// Calculate cost.
-	cost := CalculateCost(
-		"openai",
-		result.Usage.Model,
-		result.Usage.InputTokens,
-		result.Usage.OutputTokens,
-		result.Usage.CacheReadTokens,
-		result.Usage.CacheWriteTokens,
-	)
 
 	// Build token summary.
 	summary := fmt.Sprintf("in=%d out=%d",
@@ -666,7 +650,7 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 	event := CostEvent{
 		EventID:            uuid.New().String(),
 		Timestamp:          time.Now().UTC().Format(time.RFC3339Nano),
-		Provider:           "openai",
+		Provider:           ProviderOpenAI,
 		Model:              result.Usage.Model,
 		InputTokens:        result.Usage.InputTokens,
 		OutputTokens:       result.Usage.OutputTokens,
@@ -694,7 +678,7 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 
 	// Record estimated routing savings.
 	if routingDecision.Routed && routingDecision.Action == "downgrade" && h.router != nil {
-		originalCost := CalculateCost("openai", routingDecision.OriginalModel,
+		originalCost := CalculateCost(ProviderOpenAI, routingDecision.OriginalModel,
 			result.Usage.InputTokens, result.Usage.OutputTokens,
 			result.Usage.CacheReadTokens, result.Usage.CacheWriteTokens)
 		if originalCost > cost {
@@ -765,11 +749,11 @@ func RoutingStatsHandler(router *ModelRouter) http.HandlerFunc {
 // suggestCheapModel returns a suggested cheap model for a given provider.
 func suggestCheapModel(provider string) string {
 	switch provider {
-	case "anthropic":
+	case ProviderAnthropic:
 		return "claude-haiku-4-5"
-	case "openai", "azure":
+	case ProviderOpenAI, ProviderAzure:
 		return "gpt-4o-mini"
-	case "bedrock":
+	case ProviderBedrock:
 		return "anthropic.claude-3-5-haiku-20241022-v1:0"
 	default:
 		return "a cheaper model"
@@ -829,7 +813,7 @@ func (h *ProxyHandler) handleBedrockMessages(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Extract prompt analysis (fingerprint, token breakdown).
-	pa := extractPromptAnalysis(&fields, "anthropic", promptTemplateID)
+	pa := extractPromptAnalysis(&fields, ProviderAnthropic, promptTemplateID)
 
 	// --- Model routing ---
 	var routingDecision RoutingDecision
@@ -838,14 +822,14 @@ func (h *ProxyHandler) handleBedrockMessages(w http.ResponseWriter, r *http.Requ
 		if h.budget != nil && team != "" {
 			budgetPct = h.budget.GetBudgetPercent(team, appID)
 		}
-		routingDecision = h.router.Route("anthropic", fields.Model, team, appID, budgetPct)
+		routingDecision = h.router.Route(ProviderAnthropic, fields.Model, team, appID, budgetPct)
 		if routingDecision.Routed {
 			if routingDecision.Action == "block_expensive" {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusTooManyRequests)
 				msg := fmt.Sprintf(
 					`{"error":{"type":"model_blocked","message":"Expensive model blocked: team at %.0f%% of budget. Use %s instead."}}`,
-					budgetPct*100, suggestCheapModel("anthropic"))
+					budgetPct*100, suggestCheapModel(ProviderAnthropic))
 				w.Write([]byte(msg))
 				return
 			}
@@ -876,7 +860,7 @@ func (h *ProxyHandler) handleBedrockMessages(w http.ResponseWriter, r *http.Requ
 
 	// Calculate cost.
 	cost := CalculateCost(
-		"bedrock",
+		ProviderBedrock,
 		result.Usage.Model,
 		result.Usage.InputTokens,
 		result.Usage.OutputTokens,
@@ -896,7 +880,7 @@ func (h *ProxyHandler) handleBedrockMessages(w http.ResponseWriter, r *http.Requ
 	event := CostEvent{
 		EventID:            uuid.New().String(),
 		Timestamp:          time.Now().UTC().Format(time.RFC3339Nano),
-		Provider:           "bedrock",
+		Provider:           ProviderBedrock,
 		Model:              result.Usage.Model,
 		InputTokens:        result.Usage.InputTokens,
 		OutputTokens:       result.Usage.OutputTokens,
@@ -987,7 +971,7 @@ func (h *ProxyHandler) handleAzureChatCompletions(w http.ResponseWriter, r *http
 	}
 
 	// Extract prompt analysis (fingerprint, token breakdown).
-	pa := extractPromptAnalysis(&fields, "openai", promptTemplateID)
+	pa := extractPromptAnalysis(&fields, ProviderOpenAI, promptTemplateID)
 
 	// --- Model routing ---
 	var routingDecision RoutingDecision
@@ -996,14 +980,14 @@ func (h *ProxyHandler) handleAzureChatCompletions(w http.ResponseWriter, r *http
 		if h.budget != nil && team != "" {
 			budgetPct = h.budget.GetBudgetPercent(team, appID)
 		}
-		routingDecision = h.router.Route("openai", fields.Model, team, appID, budgetPct)
+		routingDecision = h.router.Route(ProviderOpenAI, fields.Model, team, appID, budgetPct)
 		if routingDecision.Routed {
 			if routingDecision.Action == "block_expensive" {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusTooManyRequests)
 				msg := fmt.Sprintf(
 					`{"error":{"type":"model_blocked","message":"Expensive model blocked: team at %.0f%% of budget. Use %s instead."}}`,
-					budgetPct*100, suggestCheapModel("openai"))
+					budgetPct*100, suggestCheapModel(ProviderOpenAI))
 				w.Write([]byte(msg))
 				return
 			}
@@ -1034,7 +1018,7 @@ func (h *ProxyHandler) handleAzureChatCompletions(w http.ResponseWriter, r *http
 
 	// Calculate cost (Azure uses same pricing as OpenAI).
 	cost := CalculateCost(
-		"azure",
+		ProviderAzure,
 		result.Usage.Model,
 		result.Usage.InputTokens,
 		result.Usage.OutputTokens,
@@ -1052,7 +1036,7 @@ func (h *ProxyHandler) handleAzureChatCompletions(w http.ResponseWriter, r *http
 	event := CostEvent{
 		EventID:            uuid.New().String(),
 		Timestamp:          time.Now().UTC().Format(time.RFC3339Nano),
-		Provider:           "azure",
+		Provider:           ProviderAzure,
 		Model:              result.Usage.Model,
 		InputTokens:        result.Usage.InputTokens,
 		OutputTokens:       result.Usage.OutputTokens,

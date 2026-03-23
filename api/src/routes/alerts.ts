@@ -7,7 +7,7 @@ const router = Router();
 
 // Detect anomalies and persist new ones to the alerts table.
 // Deduplicates by team+hour so we don't create duplicates on each poll.
-function detectAndPersistAnomalies(): void {
+export function detectAndPersistAnomalies(): void {
   try {
     const db = getDatabase();
 
@@ -68,9 +68,6 @@ router.get("/", (req: Request, res: Response) => {
   try {
     const db = getDatabase();
     const includeDismissed = req.query.include_dismissed === "true";
-
-    // Detect and persist new anomalies on each request
-    detectAndPersistAnomalies();
 
     let query = `
       SELECT id, type, team, hour, message, hourly_spend, avg_spend, dismissed_at, created_at
