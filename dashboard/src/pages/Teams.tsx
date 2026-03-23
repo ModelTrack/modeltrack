@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { useApi } from '../hooks/useApi';
 import TeamBreakdown from '../components/TeamBreakdown';
+import SlideOver from '../components/SlideOver';
 import type { TeamRow, SegmentSpend } from '../types';
 import { formatCurrency, formatNumber } from '../lib/format';
 
@@ -9,6 +11,7 @@ interface ApiTeamRow {
   request_count: number;
   by_model: Record<string, number>;
   by_app: Record<string, number>;
+  budget?: number;
 }
 
 interface SegmentRow extends SegmentSpend {
@@ -18,6 +21,7 @@ interface SegmentRow extends SegmentSpend {
 export default function Teams() {
   const { data: raw, loading, error } = useApi<ApiTeamRow[]>('/api/teams');
   const { data: segments } = useApi<SegmentRow[]>('/api/segments');
+  const [selectedTeam, setSelectedTeam] = useState<ApiTeamRow | null>(null);
 
   if (loading && !raw) {
     return (
@@ -65,18 +69,19 @@ export default function Teams() {
               {raw.map((team) => (
                 <tr
                   key={team.team}
-                  className="border-b border-gray-800/50 hover:bg-gray-800/30"
+                  className="border-b border-gray-800/50 hover:bg-gray-800/30 cursor-pointer"
+                  onClick={() => setSelectedTeam(team)}
                 >
                   <td className="px-4 py-3 font-medium text-gray-100">
                     {team.team}
                   </td>
-                  <td className="px-4 py-3 text-gray-300">
+                  <td className="px-4 py-3 text-gray-300 tabular-nums">
                     {formatNumber(team.request_count)}
                   </td>
-                  <td className="px-4 py-3 text-gray-300">
+                  <td className="px-4 py-3 text-gray-300 tabular-nums">
                     {Object.keys(team.by_app).length}
                   </td>
-                  <td className="px-4 py-3 text-emerald-400">
+                  <td className="px-4 py-3 text-emerald-400 tabular-nums">
                     {formatCurrency(team.total_spend)}
                   </td>
                 </tr>
@@ -110,13 +115,13 @@ export default function Teams() {
                       <td className="px-4 py-3 font-medium text-gray-100 capitalize">
                         {seg.customer_tier}
                       </td>
-                      <td className="px-4 py-3 text-gray-300">
+                      <td className="px-4 py-3 text-gray-300 tabular-nums">
                         {formatNumber(seg.request_count)}
                       </td>
-                      <td className="px-4 py-3 text-gray-300">
+                      <td className="px-4 py-3 text-gray-300 tabular-nums">
                         {formatCurrency(seg.avg_cost_per_request)}
                       </td>
-                      <td className="px-4 py-3 text-emerald-400">
+                      <td className="px-4 py-3 text-emerald-400 tabular-nums">
                         {formatCurrency(seg.total_cost)}
                       </td>
                     </tr>
@@ -126,6 +131,114 @@ export default function Teams() {
             </div>
           </div>
         </>
+      )}
+
+      <SlideOver
+        open={selectedTeam !== null}
+        onClose={() => setSelectedTeam(null)}
+        title={selectedTeam?.team ?? ''}
+      >
+        {selectedTeam && <TeamDetail team={selectedTeam} />}
+      </SlideOver>
+    </div>
+  );
+}
+
+function TeamDetail({ team }: { team: ApiTeamRow }) {
+  const budgetUsedPct =
+    team.budget && team.budget > 0
+      ? Math.min((team.total_spend / team.budget) * 100, 100)
+      : null;
+
+  const modelEntries = Object.entries(team.by_model).sort(
+    ([, a], [, b]) => b - a,
+  );
+  const appEntries = Object.entries(team.by_app).sort(([, a], [, b]) => b - a);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-xl font-semibold text-gray-100 mb-1">{team.team}</h3>
+        <p className="text-sm text-gray-400">Team details</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-gray-800/50 rounded-lg p-4">
+          <p className="text-xs text-gray-400 mb-1">Total Cost</p>
+          <p className="text-lg font-semibold text-emerald-400 tabular-nums">
+            {formatCurrency(team.total_spend)}
+          </p>
+        </div>
+        <div className="bg-gray-800/50 rounded-lg p-4">
+          <p className="text-xs text-gray-400 mb-1">Requests</p>
+          <p className="text-lg font-semibold text-gray-100 tabular-nums">
+            {formatNumber(team.request_count)}
+          </p>
+        </div>
+      </div>
+
+      {budgetUsedPct !== null && team.budget !== undefined && (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-gray-400">Budget Status</p>
+            <p className="text-sm text-gray-300 tabular-nums">
+              {formatCurrency(team.total_spend)} / {formatCurrency(team.budget)}
+            </p>
+          </div>
+          <div className="h-2.5 rounded-full overflow-hidden bg-gray-800">
+            <div
+              className={`h-full rounded-full transition-all ${
+                budgetUsedPct >= 90
+                  ? 'bg-red-500'
+                  : budgetUsedPct >= 70
+                    ? 'bg-yellow-500'
+                    : 'bg-emerald-500'
+              }`}
+              style={{ width: `${budgetUsedPct}%` }}
+            />
+          </div>
+          <p className="text-xs text-gray-500 mt-1 tabular-nums">
+            {budgetUsedPct.toFixed(1)}% used
+          </p>
+        </div>
+      )}
+
+      {modelEntries.length > 0 && (
+        <div>
+          <p className="text-sm font-medium text-gray-300 mb-2">Model Breakdown</p>
+          <div className="space-y-2">
+            {modelEntries.map(([model, spend]) => (
+              <div
+                key={model}
+                className="flex items-center justify-between text-sm"
+              >
+                <span className="text-gray-300 truncate mr-2">{model}</span>
+                <span className="text-emerald-400 tabular-nums shrink-0">
+                  {formatCurrency(spend)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {appEntries.length > 0 && (
+        <div>
+          <p className="text-sm font-medium text-gray-300 mb-2">App Breakdown</p>
+          <div className="space-y-2">
+            {appEntries.map(([app, spend]) => (
+              <div
+                key={app}
+                className="flex items-center justify-between text-sm"
+              >
+                <span className="text-gray-300 truncate mr-2">{app}</span>
+                <span className="text-emerald-400 tabular-nums shrink-0">
+                  {formatCurrency(spend)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

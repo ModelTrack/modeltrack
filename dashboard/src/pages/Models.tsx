@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -9,8 +10,9 @@ import {
 } from 'recharts';
 import { useApi } from '../hooks/useApi';
 import ModelTable from '../components/ModelTable';
+import SlideOver from '../components/SlideOver';
 import type { ModelRow } from '../types';
-import { formatCurrency } from '../lib/format';
+import { formatCurrency, formatNumber, formatTokens } from '../lib/format';
 
 interface ApiModelRow {
   model: string;
@@ -25,6 +27,7 @@ interface ApiModelRow {
 
 export default function Models() {
   const { data: raw, loading, error } = useApi<ApiModelRow[]>('/api/models');
+  const [selectedModel, setSelectedModel] = useState<ModelRow | null>(null);
 
   if (loading && !raw) {
     return (
@@ -97,7 +100,81 @@ export default function Models() {
         </ResponsiveContainer>
       </div>
 
-      <ModelTable data={models} />
+      <ModelTable data={models} onRowClick={(row) => setSelectedModel(row)} />
+
+      <SlideOver
+        open={selectedModel !== null}
+        onClose={() => setSelectedModel(null)}
+        title={selectedModel?.model ?? ''}
+      >
+        {selectedModel && <ModelDetail model={selectedModel} />}
+      </SlideOver>
+    </div>
+  );
+}
+
+function ModelDetail({ model }: { model: ModelRow }) {
+  const totalTokens = model.input_tokens + model.output_tokens;
+  const inputPct = totalTokens > 0 ? (model.input_tokens / totalTokens) * 100 : 50;
+  const outputPct = totalTokens > 0 ? (model.output_tokens / totalTokens) * 100 : 50;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-xl font-semibold text-gray-100 mb-1">{model.model}</h3>
+        <p className="text-sm text-gray-400">Model details</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-gray-800/50 rounded-lg p-4">
+          <p className="text-xs text-gray-400 mb-1">Total Cost</p>
+          <p className="text-lg font-semibold text-emerald-400 tabular-nums">
+            {formatCurrency(model.total_cost)}
+          </p>
+        </div>
+        <div className="bg-gray-800/50 rounded-lg p-4">
+          <p className="text-xs text-gray-400 mb-1">Requests</p>
+          <p className="text-lg font-semibold text-gray-100 tabular-nums">
+            {formatNumber(model.requests)}
+          </p>
+        </div>
+        <div className="bg-gray-800/50 rounded-lg p-4">
+          <p className="text-xs text-gray-400 mb-1">Avg Cost / Request</p>
+          <p className="text-lg font-semibold text-gray-100 tabular-nums">
+            {formatCurrency(model.avg_cost_per_request)}
+          </p>
+        </div>
+        <div className="bg-gray-800/50 rounded-lg p-4">
+          <p className="text-xs text-gray-400 mb-1">Total Tokens</p>
+          <p className="text-lg font-semibold text-gray-100 tabular-nums">
+            {formatTokens(model.input_tokens + model.output_tokens)}
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-sm text-gray-400 mb-2">Token Breakdown</p>
+        <div className="flex h-3 rounded-full overflow-hidden bg-gray-800">
+          <div
+            className="bg-emerald-500 transition-all"
+            style={{ width: `${inputPct}%` }}
+          />
+          <div
+            className="bg-blue-500 transition-all"
+            style={{ width: `${outputPct}%` }}
+          />
+        </div>
+        <div className="flex justify-between mt-2 text-xs text-gray-400">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            Input: {formatTokens(model.input_tokens)} ({inputPct.toFixed(1)}%)
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-blue-500" />
+            Output: {formatTokens(model.output_tokens)} ({outputPct.toFixed(1)}%)
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

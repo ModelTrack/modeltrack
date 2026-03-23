@@ -6,9 +6,10 @@ type SortKey = keyof ModelRow;
 
 interface ModelTableProps {
   data: ModelRow[];
+  onRowClick?: (row: ModelRow) => void;
 }
 
-export default function ModelTable({ data }: ModelTableProps) {
+export default function ModelTable({ data, onRowClick }: ModelTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('total_cost');
   const [sortAsc, setSortAsc] = useState(false);
 
@@ -68,24 +69,27 @@ export default function ModelTable({ data }: ModelTableProps) {
             {sorted.map((row) => (
               <tr
                 key={row.model}
-                className="border-b border-gray-800/50 hover:bg-gray-800/30"
+                className={`border-b border-gray-800/50 hover:bg-gray-800/30 ${
+                  onRowClick ? 'cursor-pointer' : ''
+                }`}
+                onClick={() => onRowClick?.(row)}
               >
                 <td className="px-4 py-3 font-medium text-gray-100">
                   {row.model}
                 </td>
-                <td className="px-4 py-3 text-gray-300">
+                <td className="px-4 py-3 text-gray-300 tabular-nums">
                   {formatNumber(row.requests)}
                 </td>
-                <td className="px-4 py-3 text-gray-300">
+                <td className="px-4 py-3 text-gray-300 tabular-nums">
                   {formatTokens(row.input_tokens)}
                 </td>
-                <td className="px-4 py-3 text-gray-300">
+                <td className="px-4 py-3 text-gray-300 tabular-nums">
                   {formatTokens(row.output_tokens)}
                 </td>
-                <td className="px-4 py-3 text-emerald-400">
+                <td className="px-4 py-3 text-emerald-400 tabular-nums">
                   {formatCurrency(row.total_cost)}
                 </td>
-                <td className="px-4 py-3 text-gray-300">
+                <td className="px-4 py-3 text-gray-300 tabular-nums">
                   {formatCurrency(row.avg_cost_per_request)}
                 </td>
               </tr>

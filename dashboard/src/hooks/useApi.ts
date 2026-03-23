@@ -5,10 +5,12 @@ export function useApi<T>(url: string): {
   loading: boolean;
   error: string | null;
   refetch: () => void;
+  isFirstLoad: boolean;
 } {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasFetchedOnce = useRef(false);
   const intervalRef = useRef<number | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -26,6 +28,7 @@ export function useApi<T>(url: string): {
       } else {
         setData(json);
       }
+      hasFetchedOnce.current = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -45,5 +48,7 @@ export function useApi<T>(url: string): {
     };
   }, [fetchData]);
 
-  return { data, loading, error, refetch: fetchData };
+  const isFirstLoad = loading && !hasFetchedOnce.current;
+
+  return { data, loading, error, refetch: fetchData, isFirstLoad };
 }
