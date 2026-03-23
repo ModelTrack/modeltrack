@@ -13,6 +13,8 @@ import ModelTable from '../components/ModelTable';
 import SlideOver from '../components/SlideOver';
 import type { ModelRow } from '../types';
 import { formatCurrency, formatNumber, formatTokens } from '../lib/format';
+import { chartTooltipStyle } from '../lib/chartTheme';
+import FilterPills, { type Filter } from '../components/FilterPills';
 
 interface ApiModelRow {
   model: string;
@@ -28,6 +30,7 @@ interface ApiModelRow {
 export default function Models() {
   const { data: raw, loading, error } = useApi<ApiModelRow[]>('/api/models');
   const [selectedModel, setSelectedModel] = useState<ModelRow | null>(null);
+  const [filters, setFilters] = useState<Filter[]>([]);
 
   if (loading && !raw) {
     return (
@@ -48,7 +51,7 @@ export default function Models() {
   if (!raw) return null;
 
   // Map API shape to ModelRow
-  const models: ModelRow[] = raw.map((r) => ({
+  const allModels: ModelRow[] = raw.map((r) => ({
     model: r.model,
     requests: r.request_count,
     input_tokens: r.total_input_tokens,
@@ -57,6 +60,16 @@ export default function Models() {
     avg_cost_per_request: r.avg_cost_per_request,
   }));
 
+  // Client-side filtering
+  const models = allModels.filter((m) =>
+    filters.every((f) => {
+      const fieldLower = f.field.toLowerCase();
+      const valLower = f.value.toLowerCase();
+      if (fieldLower === 'model') return m.model.toLowerCase().includes(valLower);
+      return true;
+    }),
+  );
+
   const chartData = [...models]
     .sort((a, b) => b.total_cost - a.total_cost)
     .slice(0, 10);
@@ -64,6 +77,8 @@ export default function Models() {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-semibold text-gray-100">Models</h2>
+
+      <FilterPills filters={filters} onChange={setFilters} />
 
       <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
         <h3 className="text-lg font-medium text-gray-100 mb-4">
@@ -86,14 +101,11 @@ export default function Models() {
               tickFormatter={(v) => formatCurrency(v)}
             />
             <Tooltip
-              contentStyle={{
-                backgroundColor: '#111827',
-                border: '1px solid #374151',
-                borderRadius: '8px',
-                color: '#f3f4f6',
-              }}
+              cursor={false}
+              contentStyle={chartTooltipStyle.contentStyle}
+              labelStyle={chartTooltipStyle.labelStyle}
+              itemStyle={chartTooltipStyle.itemStyle}
               formatter={(value: number) => [formatCurrency(value), 'Cost']}
-              labelStyle={{ color: '#9ca3af' }}
             />
             <Bar dataKey="total_cost" fill="#10b981" radius={[4, 4, 0, 0]} />
           </BarChart>

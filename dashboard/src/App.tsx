@@ -87,10 +87,10 @@ export default function App() {
               <button
                 key={item.key}
                 onClick={() => setPage(item.key)}
-                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-all duration-150 ${
                   page === item.key
-                    ? 'bg-gray-800 text-gray-100'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-900'
+                    ? 'bg-gray-800 text-gray-100 border-l-2 border-emerald-400 shadow-[inset_0_0_12px_rgba(16,185,129,0.06)]'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-900 hover:translate-x-0.5 border-l-2 border-transparent'
                 }`}
               >
                 {item.label}

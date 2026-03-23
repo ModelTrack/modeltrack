@@ -11,6 +11,7 @@ import {
 import { useApi } from '../hooks/useApi';
 import type { FeatureUsage } from '../types';
 import { formatCurrency, formatNumber, formatTokens } from '../lib/format';
+import { chartTooltipStyle } from '../lib/chartTheme';
 
 type SortKey = keyof FeatureUsage;
 
@@ -104,14 +105,11 @@ export default function Features() {
               width={150}
             />
             <Tooltip
-              contentStyle={{
-                backgroundColor: '#111827',
-                border: '1px solid #374151',
-                borderRadius: '8px',
-                color: '#f3f4f6',
-              }}
+              cursor={false}
+              contentStyle={chartTooltipStyle.contentStyle}
+              labelStyle={chartTooltipStyle.labelStyle}
+              itemStyle={chartTooltipStyle.itemStyle}
               formatter={(value: number) => [formatCurrency(value), 'Cost']}
-              labelStyle={{ color: '#9ca3af' }}
             />
             <Bar dataKey="total_cost" fill="#10b981" radius={[0, 4, 4, 0]} />
           </BarChart>

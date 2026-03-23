@@ -13,6 +13,7 @@ import {
 import { useApi } from '../hooks/useApi';
 import MetricCard from '../components/MetricCard';
 import { formatCurrency } from '../lib/format';
+import { chartTooltipStyle } from '../lib/chartTheme';
 import type { ForecastData } from '../types';
 
 type Granularity = 'day' | 'week' | 'month';
@@ -242,12 +243,10 @@ export default function Forecast() {
               tickFormatter={(v) => formatCurrency(v)}
             />
             <Tooltip
-              contentStyle={{
-                backgroundColor: '#111827',
-                border: '1px solid #374151',
-                borderRadius: '8px',
-                color: '#f3f4f6',
-              }}
+              cursor={{ stroke: '#4b5563', strokeDasharray: '3 3' }}
+              contentStyle={chartTooltipStyle.contentStyle}
+              labelStyle={chartTooltipStyle.labelStyle}
+              itemStyle={chartTooltipStyle.itemStyle}
               formatter={(value: number | null, name: string) => {
                 if (value === null) return ['-', name];
                 const labels: Record<string, string> = {
@@ -258,7 +257,6 @@ export default function Forecast() {
                 };
                 return [formatCurrency(value), labels[name] || name];
               }}
-              labelStyle={{ color: '#9ca3af' }}
             />
             {/* Confidence interval shaded area */}
             <Area

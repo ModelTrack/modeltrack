@@ -12,6 +12,7 @@ import MetricCard from '../components/MetricCard';
 import SpendChart from '../components/SpendChart';
 import type { InfrastructureData } from '../types';
 import { formatCurrency, formatNumber } from '../lib/format';
+import { chartTooltipStyle } from '../lib/chartTheme';
 
 function utilizationColor(pct: number): string {
   if (pct >= 70) return 'text-emerald-400';
@@ -114,14 +115,11 @@ export default function Infrastructure() {
                 width={150}
               />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: '#111827',
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  color: '#f3f4f6',
-                }}
+                cursor={false}
+                contentStyle={chartTooltipStyle.contentStyle}
+                labelStyle={chartTooltipStyle.labelStyle}
+                itemStyle={chartTooltipStyle.itemStyle}
                 formatter={(value: number) => [formatCurrency(value), 'Cost']}
-                labelStyle={{ color: '#9ca3af' }}
               />
               <Bar dataKey="cost" fill="#10b981" radius={[0, 4, 4, 0]} />
             </BarChart>
@@ -150,14 +148,11 @@ export default function Infrastructure() {
                 width={150}
               />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: '#111827',
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  color: '#f3f4f6',
-                }}
+                cursor={false}
+                contentStyle={chartTooltipStyle.contentStyle}
+                labelStyle={chartTooltipStyle.labelStyle}
+                itemStyle={chartTooltipStyle.itemStyle}
                 formatter={(value: number) => [formatCurrency(value), 'Cost']}
-                labelStyle={{ color: '#9ca3af' }}
               />
               <Bar dataKey="cost" fill="#6366f1" radius={[0, 4, 4, 0]} />
             </BarChart>

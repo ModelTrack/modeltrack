@@ -13,6 +13,7 @@ import {
 import { useApi } from '../hooks/useApi';
 import MetricCard from '../components/MetricCard';
 import { formatCurrency, formatNumber } from '../lib/format';
+import { chartTooltipStyle } from '../lib/chartTheme';
 import type { ExecutiveReport } from '../types';
 
 type PeriodPreset = 'this_week' | 'this_month' | 'last_month' | 'this_quarter';
@@ -254,11 +255,13 @@ export default function Reports() {
             <XAxis dataKey="date" stroke="#6b7280" tick={{ fill: '#9ca3af', fontSize: 12 }} />
             <YAxis stroke="#6b7280" tick={{ fill: '#9ca3af', fontSize: 12 }} tickFormatter={(v) => formatCurrency(v)} />
             <Tooltip
-              contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '8px', color: '#f3f4f6' }}
+              cursor={{ stroke: '#4b5563', strokeDasharray: '3 3' }}
+              contentStyle={chartTooltipStyle.contentStyle}
+              labelStyle={chartTooltipStyle.labelStyle}
+              itemStyle={chartTooltipStyle.itemStyle}
               formatter={(value: number) => [formatCurrency(value), 'Cost']}
-              labelStyle={{ color: '#9ca3af' }}
             />
-            <Area type="monotone" dataKey="cost" stroke="#10b981" fill="url(#reportCostGradient)" strokeWidth={2} />
+            <Area type="monotone" dataKey="cost" stroke="#10b981" fill="url(#reportCostGradient)" strokeWidth={2} activeDot={{ r: 4, fill: '#10b981', stroke: '#065f46', strokeWidth: 2 }} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -274,9 +277,11 @@ export default function Reports() {
               <XAxis type="number" stroke="#6b7280" tick={{ fill: '#9ca3af', fontSize: 12 }} tickFormatter={(v) => formatCurrency(v)} />
               <YAxis type="category" dataKey="team" stroke="#6b7280" tick={{ fill: '#9ca3af', fontSize: 12 }} width={100} />
               <Tooltip
-                contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '8px', color: '#f3f4f6' }}
+                cursor={false}
+                contentStyle={chartTooltipStyle.contentStyle}
+                labelStyle={chartTooltipStyle.labelStyle}
+                itemStyle={chartTooltipStyle.itemStyle}
                 formatter={(value: number) => [formatCurrency(value), 'Cost']}
-                labelStyle={{ color: '#9ca3af' }}
               />
               <Bar dataKey="total_cost" fill="#10b981" radius={[0, 4, 4, 0]} />
             </BarChart>
@@ -292,9 +297,11 @@ export default function Reports() {
               <XAxis type="number" stroke="#6b7280" tick={{ fill: '#9ca3af', fontSize: 12 }} tickFormatter={(v) => formatCurrency(v)} />
               <YAxis type="category" dataKey="model" stroke="#6b7280" tick={{ fill: '#9ca3af', fontSize: 12 }} width={140} />
               <Tooltip
-                contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '8px', color: '#f3f4f6' }}
+                cursor={false}
+                contentStyle={chartTooltipStyle.contentStyle}
+                labelStyle={chartTooltipStyle.labelStyle}
+                itemStyle={chartTooltipStyle.itemStyle}
                 formatter={(value: number) => [formatCurrency(value), 'Cost']}
-                labelStyle={{ color: '#9ca3af' }}
               />
               <Bar dataKey="total_cost" fill="#6366f1" radius={[0, 4, 4, 0]} />
             </BarChart>

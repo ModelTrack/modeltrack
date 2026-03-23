@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useApi } from '../hooks/useApi';
 import MetricCard from '../components/MetricCard';
 import SpendChart from '../components/SpendChart';
 import { SkeletonCard, SkeletonChart } from '../components/Skeleton';
+import DateRangePicker, { type DateRange } from '../components/DateRangePicker';
 import { formatCurrency, formatNumber } from '../lib/format';
 import type { Page } from '../App';
 
@@ -19,8 +21,18 @@ interface OverviewProps {
   setPage: (page: Page) => void;
 }
 
+function getDefaultRange(): DateRange {
+  const now = new Date();
+  const end = now.toISOString().slice(0, 10);
+  const start = new Date(now);
+  start.setDate(start.getDate() - 30);
+  return { label: 'Last 30 days', start: start.toISOString().slice(0, 10), end };
+}
+
 export default function Overview({ setPage }: OverviewProps) {
-  const { data, error, isFirstLoad } = useApi<OverviewData>('/api/overview');
+  const [dateRange, setDateRange] = useState<DateRange>(getDefaultRange);
+  const url = `/api/overview?start_date=${dateRange.start}&end_date=${dateRange.end}`;
+  const { data, error, isFirstLoad } = useApi<OverviewData>(url);
 
   if (error && !data) {
     return (
@@ -62,7 +74,10 @@ export default function Overview({ setPage }: OverviewProps) {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-gray-100">Overview</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-semibold text-gray-100">Overview</h2>
+        <DateRangePicker value={dateRange} onChange={setDateRange} />
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard

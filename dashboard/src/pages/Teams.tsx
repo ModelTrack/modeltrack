@@ -4,6 +4,7 @@ import TeamBreakdown from '../components/TeamBreakdown';
 import SlideOver from '../components/SlideOver';
 import type { TeamRow, SegmentSpend } from '../types';
 import { formatCurrency, formatNumber } from '../lib/format';
+import FilterPills, { type Filter } from '../components/FilterPills';
 
 interface ApiTeamRow {
   team: string;
@@ -22,6 +23,7 @@ export default function Teams() {
   const { data: raw, loading, error } = useApi<ApiTeamRow[]>('/api/teams');
   const { data: segments } = useApi<SegmentRow[]>('/api/segments');
   const [selectedTeam, setSelectedTeam] = useState<ApiTeamRow | null>(null);
+  const [filters, setFilters] = useState<Filter[]>([]);
 
   if (loading && !raw) {
     return (
@@ -42,15 +44,38 @@ export default function Teams() {
   if (!raw) return null;
 
   // Map API shape to TeamRow for the chart component
-  const teams: TeamRow[] = raw.map((t) => ({
+  const allTeams: TeamRow[] = raw.map((t) => ({
     team: t.team,
     total_cost: t.total_spend,
     requests: t.request_count,
   }));
 
+  // Client-side filtering
+  const teams = allTeams.filter((t) =>
+    filters.every((f) => {
+      const fieldLower = f.field.toLowerCase();
+      const valLower = f.value.toLowerCase();
+      if (fieldLower === 'team') return t.team.toLowerCase().includes(valLower);
+      return true;
+    }),
+  );
+
+  const filteredRaw = raw.filter((t) =>
+    filters.every((f) => {
+      const fieldLower = f.field.toLowerCase();
+      const valLower = f.value.toLowerCase();
+      if (fieldLower === 'team') return t.team.toLowerCase().includes(valLower);
+      return true;
+    }),
+  );
+
+  const maxTeamCost = filteredRaw.length > 0 ? Math.max(...filteredRaw.map((t) => t.total_spend)) : 1;
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-semibold text-gray-100">Teams</h2>
+
+      <FilterPills filters={filters} onChange={setFilters} />
 
       <TeamBreakdown data={teams} />
 
@@ -66,7 +91,7 @@ export default function Teams() {
               </tr>
             </thead>
             <tbody>
-              {raw.map((team) => (
+              {filteredRaw.map((team) => (
                 <tr
                   key={team.team}
                   className="border-b border-gray-800/50 hover:bg-gray-800/30 cursor-pointer"
@@ -81,8 +106,12 @@ export default function Teams() {
                   <td className="px-4 py-3 text-gray-300 tabular-nums">
                     {Object.keys(team.by_app).length}
                   </td>
-                  <td className="px-4 py-3 text-emerald-400 tabular-nums">
-                    {formatCurrency(team.total_spend)}
+                  <td className="px-4 py-3 relative">
+                    <div
+                      className="absolute inset-y-0 left-0 bg-emerald-500/10"
+                      style={{ width: `${(team.total_spend / maxTeamCost) * 100}%` }}
+                    />
+                    <span className="relative text-emerald-400 tabular-nums">{formatCurrency(team.total_spend)}</span>
                   </td>
                 </tr>
               ))}

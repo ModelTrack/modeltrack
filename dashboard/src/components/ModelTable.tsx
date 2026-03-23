@@ -13,6 +13,8 @@ export default function ModelTable({ data, onRowClick }: ModelTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('total_cost');
   const [sortAsc, setSortAsc] = useState(false);
 
+  const maxCost = data.length > 0 ? Math.max(...data.map((d) => d.total_cost)) : 1;
+
   const sorted = [...data].sort((a, b) => {
     const aVal = a[sortKey];
     const bVal = b[sortKey];
@@ -86,8 +88,12 @@ export default function ModelTable({ data, onRowClick }: ModelTableProps) {
                 <td className="px-4 py-3 text-gray-300 tabular-nums">
                   {formatTokens(row.output_tokens)}
                 </td>
-                <td className="px-4 py-3 text-emerald-400 tabular-nums">
-                  {formatCurrency(row.total_cost)}
+                <td className="px-4 py-3 relative">
+                  <div
+                    className="absolute inset-y-0 left-0 bg-emerald-500/10"
+                    style={{ width: `${(row.total_cost / maxCost) * 100}%` }}
+                  />
+                  <span className="relative text-emerald-400 tabular-nums">{formatCurrency(row.total_cost)}</span>
                 </td>
                 <td className="px-4 py-3 text-gray-300 tabular-nums">
                   {formatCurrency(row.avg_cost_per_request)}

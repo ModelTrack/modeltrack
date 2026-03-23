@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { formatCurrency } from '../lib/format';
+import { chartTooltipStyle } from '../lib/chartTheme';
 
 interface SpendChartProps {
   data: { date: string; cost: number }[];
@@ -22,8 +23,9 @@ export default function SpendChart({ data, title }: SpendChartProps) {
         <AreaChart data={data}>
           <defs>
             <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+              <stop offset="0%" stopColor="#10b981" stopOpacity={0.4} />
+              <stop offset="50%" stopColor="#10b981" stopOpacity={0.15} />
+              <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
@@ -38,14 +40,11 @@ export default function SpendChart({ data, title }: SpendChartProps) {
             tickFormatter={(v) => formatCurrency(v)}
           />
           <Tooltip
-            contentStyle={{
-              backgroundColor: '#111827',
-              border: '1px solid #374151',
-              borderRadius: '8px',
-              color: '#f3f4f6',
-            }}
+            cursor={{ stroke: '#4b5563', strokeDasharray: '3 3' }}
+            contentStyle={chartTooltipStyle.contentStyle}
+            labelStyle={chartTooltipStyle.labelStyle}
+            itemStyle={chartTooltipStyle.itemStyle}
             formatter={(value: number) => [formatCurrency(value), 'Cost']}
-            labelStyle={{ color: '#9ca3af' }}
           />
           <Area
             type="monotone"
@@ -53,6 +52,7 @@ export default function SpendChart({ data, title }: SpendChartProps) {
             stroke="#10b981"
             fill="url(#costGradient)"
             strokeWidth={2}
+            activeDot={{ r: 4, fill: '#10b981', stroke: '#065f46', strokeWidth: 2 }}
           />
         </AreaChart>
       </ResponsiveContainer>
