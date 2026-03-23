@@ -39,7 +39,7 @@ function stagger(i: number) {
 const navLinks = [
   { label: "Features", href: "#features" },
   { label: "Pricing", href: "#pricing" },
-  { label: "Docs", href: "#" },
+  { label: "Docs", href: "https://github.com/ModelTrack/modeltrack#quick-start" },
   { label: "GitHub", href: "https://github.com/ModelTrack/modeltrack" },
 ];
 
@@ -149,19 +149,32 @@ const pricingPlans = [
 const footerColumns = [
   {
     title: "Product",
-    links: ["Features", "Pricing", "Docs", "Changelog"],
+    links: [
+      { label: "Features", href: "#features" },
+      { label: "Pricing", href: "#pricing" },
+      { label: "Docs", href: "https://github.com/ModelTrack/modeltrack#quick-start" },
+      { label: "Changelog", href: "https://github.com/ModelTrack/modeltrack/releases" },
+    ],
   },
   {
     title: "Developers",
-    links: ["GitHub", "SDKs", "API Reference", "Status"],
+    links: [
+      { label: "GitHub", href: "https://github.com/ModelTrack/modeltrack" },
+      { label: "SDKs", href: "https://github.com/ModelTrack/modeltrack/tree/master/sdks" },
+      { label: "API Reference", href: "https://github.com/ModelTrack/modeltrack#api-endpoints" },
+    ],
   },
   {
     title: "Company",
-    links: ["About", "Blog", "Careers", "Contact"],
+    links: [
+      { label: "Contact", href: "mailto:hello@modeltrack.ai" },
+    ],
   },
   {
     title: "Legal",
-    links: ["Privacy", "Terms"],
+    links: [
+      { label: "License", href: "https://github.com/ModelTrack/modeltrack/blob/master/LICENSE" },
+    ],
   },
 ];
 
@@ -195,7 +208,7 @@ export default function Home() {
           </div>
 
           <Link
-            href="#"
+            href="https://github.com/ModelTrack/modeltrack#quick-start"
             className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-black hover:bg-emerald-400 transition-colors duration-200"
           >
             Get Started
@@ -238,7 +251,7 @@ export default function Home() {
             className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <Link
-              href="#"
+              href="https://github.com/ModelTrack/modeltrack#quick-start"
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-6 py-3 text-sm font-medium text-black hover:bg-emerald-400 transition-colors duration-200"
             >
               Get Started Free
@@ -481,7 +494,7 @@ export default function Home() {
                 </ul>
 
                 <Link
-                  href="#"
+                  href="https://github.com/ModelTrack/modeltrack#quick-start"
                   className={`inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium transition-colors duration-200 ${
                     plan.ctaStyle === "solid"
                       ? "bg-emerald-500 text-black hover:bg-emerald-400"
@@ -515,7 +528,7 @@ export default function Home() {
           </motion.p>
           <motion.div {...stagger(2)} className="mt-8">
             <Link
-              href="#"
+              href="https://github.com/ModelTrack/modeltrack#quick-start"
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-8 py-3.5 text-base font-medium text-black hover:bg-emerald-400 transition-colors duration-200"
             >
               Get Started Free
@@ -538,12 +551,13 @@ export default function Home() {
                 </h4>
                 <ul className="space-y-2">
                   {col.links.map((link) => (
-                    <li key={link}>
+                    <li key={link.label}>
                       <Link
-                        href="#"
+                        href={link.href}
+                        target={link.href.startsWith("http") ? "_blank" : undefined}
                         className="text-sm text-gray-500 hover:text-gray-300 transition-colors duration-200"
                       >
-                        {link}
+                        {link.label}
                       </Link>
                     </li>
                   ))}
