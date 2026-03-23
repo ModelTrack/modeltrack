@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { getDatabase } from "../db/init";
-import { sendAlert, sendBudgetWarning, sendDailySummary, sendWeeklySummary } from "./slack";
+import { sendAlert, sendBudgetWarning, sendDailySummary, sendWeeklySummary, sendScheduledReport } from "./slack";
+import { generateExecutiveReport } from "../routes/reports";
 import type { Alert } from "../models/types";
 import type { DailySummary, WeeklySummary } from "./slack";
 
@@ -11,6 +12,24 @@ let lastClearDay: string = "";
 let anomalyInterval: ReturnType<typeof setInterval> | null = null;
 let dailySummaryTimeout: ReturnType<typeof setTimeout> | null = null;
 let weeklySummaryTimeout: ReturnType<typeof setTimeout> | null = null;
+let reportScheduleInterval: ReturnType<typeof setInterval> | null = null;
+
+interface ReportScheduleRow {
+  id: string;
+  name: string;
+  period: string;
+  frequency: string;
+  day_of_week: number;
+  day_of_month: number;
+  hour: number;
+  delivery: string;
+  enabled: number;
+  created_at: string;
+  last_sent_at: string | null;
+}
+
+let cachedSchedules: ReportScheduleRow[] = [];
+let lastScheduleLoad = 0;
 
 function clearSentAlertsDaily(): void {
   const today = new Date().toISOString().slice(0, 10);
@@ -341,6 +360,77 @@ function scheduleDailySummary(): void {
   scheduleNext();
 }
 
+function loadReportSchedules(): void {
+  try {
+    const db = getDatabase();
+    cachedSchedules = db.prepare(
+      "SELECT * FROM report_schedules WHERE enabled = 1"
+    ).all() as ReportScheduleRow[];
+    lastScheduleLoad = Date.now();
+    console.log(`[Scheduler] Loaded ${cachedSchedules.length} report schedule(s).`);
+  } catch (err) {
+    console.error("[Scheduler] Failed to load report schedules:", err);
+  }
+}
+
+function shouldScheduleFire(schedule: ReportScheduleRow, now: Date): boolean {
+  const currentHour = now.getUTCHours();
+  const currentDay = now.getUTCDay(); // 0=Sun
+  const currentDate = now.getUTCDate();
+
+  // Must match the configured hour
+  if (currentHour !== schedule.hour) return false;
+
+  // Check frequency-specific day matching
+  if (schedule.frequency === "weekly" && currentDay !== schedule.day_of_week) return false;
+  if (schedule.frequency === "monthly" && currentDate !== schedule.day_of_month) return false;
+
+  // Check if already sent this hour
+  if (schedule.last_sent_at) {
+    const lastSent = new Date(schedule.last_sent_at);
+    const hoursSince = (now.getTime() - lastSent.getTime()) / (1000 * 60 * 60);
+    if (hoursSince < 1) return false;
+  }
+
+  return true;
+}
+
+async function checkReportSchedules(): Promise<void> {
+  // Reload schedules every 5 minutes
+  if (Date.now() - lastScheduleLoad > 5 * 60 * 1000) {
+    loadReportSchedules();
+  }
+
+  const now = new Date();
+
+  for (const schedule of cachedSchedules) {
+    if (!shouldScheduleFire(schedule, now)) continue;
+
+    try {
+      console.log(`[Scheduler] Firing report schedule: ${schedule.name}`);
+      const endDate = now.toISOString().slice(0, 10);
+      const report = generateExecutiveReport(schedule.period, endDate);
+
+      if (schedule.delivery === "slack") {
+        await sendScheduledReport(
+          { name: schedule.name, period: schedule.period },
+          report
+        );
+      }
+
+      // Update last_sent_at
+      const db = getDatabase();
+      db.prepare("UPDATE report_schedules SET last_sent_at = ? WHERE id = ?")
+        .run(now.toISOString(), schedule.id);
+      schedule.last_sent_at = now.toISOString();
+
+      console.log(`[Scheduler] Report schedule "${schedule.name}" sent successfully.`);
+    } catch (err) {
+      console.error(`[Scheduler] Failed to fire report schedule "${schedule.name}":`, err);
+    }
+  }
+}
+
 export function startScheduler(): void {
   console.log("[Scheduler] Starting anomaly check every 5 minutes...");
   anomalyInterval = setInterval(() => {
@@ -354,6 +444,13 @@ export function startScheduler(): void {
 
   scheduleDailySummary();
   scheduleWeeklySummary();
+
+  // Load and check report schedules every minute
+  loadReportSchedules();
+  reportScheduleInterval = setInterval(() => {
+    checkReportSchedules();
+  }, 60 * 1000);
+  console.log("[Scheduler] Report schedule checker started (every 1 minute).");
 }
 
 export function stopScheduler(): void {
@@ -368,6 +465,10 @@ export function stopScheduler(): void {
   if (weeklySummaryTimeout) {
     clearTimeout(weeklySummaryTimeout);
     weeklySummaryTimeout = null;
+  }
+  if (reportScheduleInterval) {
+    clearInterval(reportScheduleInterval);
+    reportScheduleInterval = null;
   }
   console.log("[Scheduler] Stopped.");
 }

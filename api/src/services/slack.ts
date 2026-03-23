@@ -303,6 +303,96 @@ export async function sendWeeklySummary(summary: WeeklySummary): Promise<boolean
   return postToSlack(payload);
 }
 
+export interface ScheduledReportInput {
+  name: string;
+  period: string;
+}
+
+export interface ScheduledReportData {
+  summary: {
+    total_spend: number;
+    total_requests: number;
+    avg_cost_per_request: number;
+    cache_hit_rate: number;
+  };
+  trends: { spend_change_pct: number };
+  spend_by_team: Array<{ team: string; spend: number }>;
+  spend_by_model: Array<{ model: string; spend: number }>;
+  recommendations: string[];
+  period: { label: string };
+}
+
+export async function sendScheduledReport(
+  schedule: ScheduledReportInput,
+  report: ScheduledReportData
+): Promise<boolean> {
+  const rateLimitKey = `scheduled-report:${schedule.name}`;
+  if (isRateLimited(rateLimitKey)) {
+    console.log(`[Slack] Rate limited: ${rateLimitKey}`);
+    return false;
+  }
+
+  const topTeam = report.spend_by_team.length > 0
+    ? `${report.spend_by_team[0].team} ($${report.spend_by_team[0].spend.toFixed(2)})`
+    : "N/A";
+
+  const topModel = report.spend_by_model.length > 0
+    ? `${report.spend_by_model[0].model} ($${report.spend_by_model[0].spend.toFixed(2)})`
+    : "N/A";
+
+  const trendEmoji = report.trends.spend_change_pct > 0 ? "^" : report.trends.spend_change_pct < 0 ? "v" : "-";
+  const trendLabel = report.trends.spend_change_pct > 0 ? "up" : report.trends.spend_change_pct < 0 ? "down" : "flat";
+
+  const recText = report.recommendations.length > 0
+    ? report.recommendations.slice(0, 3).map((r, i) => `${i + 1}. ${r}`).join("\n")
+    : "No recommendations this period.";
+
+  const payload = {
+    attachments: [
+      {
+        color: "#6366f1",
+        blocks: [
+          {
+            type: "header",
+            text: {
+              type: "plain_text",
+              text: `${schedule.name} -- ${report.period.label}`,
+              emoji: true,
+            },
+          },
+          {
+            type: "section",
+            fields: [
+              { type: "mrkdwn", text: `*Total Spend:*\n$${report.summary.total_spend.toFixed(2)}` },
+              { type: "mrkdwn", text: `*Trend:*\n${trendEmoji} ${Math.abs(report.trends.spend_change_pct).toFixed(1)}% (${trendLabel})` },
+              { type: "mrkdwn", text: `*Top Team:*\n${topTeam}` },
+              { type: "mrkdwn", text: `*Top Model:*\n${topModel}` },
+            ],
+          },
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: `*Top Recommendations:*\n${recText}`,
+            },
+          },
+          {
+            type: "context",
+            elements: [
+              {
+                type: "mrkdwn",
+                text: `Full report: \`GET /api/reports/executive/export?format=csv&period=${schedule.period}\``,
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  return postToSlack(payload);
+}
+
 export async function sendTestMessage(): Promise<boolean> {
   const payload = {
     attachments: [

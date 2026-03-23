@@ -141,6 +141,22 @@ export function initDatabase(): Database.Database {
     )
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS report_schedules (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      period TEXT NOT NULL,
+      frequency TEXT NOT NULL,
+      day_of_week INTEGER DEFAULT 1,
+      day_of_month INTEGER DEFAULT 1,
+      hour INTEGER DEFAULT 9,
+      delivery TEXT DEFAULT 'slack',
+      enabled INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now')),
+      last_sent_at TEXT
+    )
+  `);
+
   console.log("Database initialized with tables and views.");
   return db;
 }

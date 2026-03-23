@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   AreaChart,
   Area,
@@ -40,11 +40,117 @@ const presetLabels: Record<PeriodPreset, string> = {
   this_quarter: 'This Quarter',
 };
 
+interface ReportSchedule {
+  id: string;
+  name: string;
+  period: string;
+  frequency: string;
+  day_of_week: number;
+  day_of_month: number;
+  hour: number;
+  delivery: string;
+  enabled: number;
+  created_at: string;
+  last_sent_at: string | null;
+}
+
+const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function formatNextSend(schedule: ReportSchedule): string {
+  const now = new Date();
+  if (schedule.frequency === 'daily') {
+    return `Daily at ${schedule.hour}:00 UTC`;
+  }
+  if (schedule.frequency === 'weekly') {
+    return `${dayNames[schedule.day_of_week]} at ${schedule.hour}:00 UTC`;
+  }
+  if (schedule.frequency === 'monthly') {
+    const suffix =
+      schedule.day_of_month === 1 ? 'st' :
+      schedule.day_of_month === 2 ? 'nd' :
+      schedule.day_of_month === 3 ? 'rd' : 'th';
+    return `${schedule.day_of_month}${suffix} at ${schedule.hour}:00 UTC`;
+  }
+  void now;
+  return 'Unknown';
+}
+
 export default function Reports() {
   const [preset, setPreset] = useState<PeriodPreset>('this_month');
   const params = useMemo(() => getPresetParams(preset), [preset]);
   const url = `/api/reports/executive?period=${params.period}&end_date=${params.end_date}`;
   const { data, loading, error } = useApi<ExecutiveReport>(url);
+
+  // Schedules state
+  const [schedules, setSchedules] = useState<ReportSchedule[]>([]);
+  const [schedulesLoading, setSchedulesLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [formName, setFormName] = useState('');
+  const [formPeriod, setFormPeriod] = useState('weekly');
+  const [formFrequency, setFormFrequency] = useState('weekly');
+  const [formDay, setFormDay] = useState(1);
+  const [formHour, setFormHour] = useState(9);
+
+  const fetchSchedules = useCallback(async () => {
+    try {
+      setSchedulesLoading(true);
+      const res = await fetch('/api/reports/schedules');
+      const json = await res.json();
+      setSchedules(json.data || []);
+    } catch {
+      // Silently handle error
+    } finally {
+      setSchedulesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSchedules();
+  }, [fetchSchedules]);
+
+  const handleExport = (format: 'csv' | 'json') => {
+    const exportUrl = `/api/reports/executive/export?format=${format}&period=${params.period}&end_date=${params.end_date}`;
+    window.open(exportUrl, '_blank');
+  };
+
+  const handleAddSchedule = async () => {
+    if (!formName.trim()) return;
+
+    try {
+      const res = await fetch('/api/reports/schedules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formName,
+          period: formPeriod,
+          frequency: formFrequency,
+          day_of_week: formDay,
+          day_of_month: formDay,
+          hour: formHour,
+          delivery: 'slack',
+          enabled: true,
+        }),
+      });
+      if (res.ok) {
+        setFormName('');
+        setShowAddForm(false);
+        fetchSchedules();
+      }
+    } catch {
+      // Silently handle error
+    }
+  };
+
+  const handleDeleteSchedule = async (id: string) => {
+    try {
+      const res = await fetch(`/api/reports/schedules/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchSchedules();
+      }
+    } catch {
+      // Silently handle error
+    }
+  };
 
   if (loading && !data) {
     return (
@@ -89,7 +195,21 @@ export default function Reports() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold text-gray-100">Executive Report</h2>
-        <p className="text-sm text-gray-400">{data.period.label}</p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => handleExport('csv')}
+            className="px-3 py-1.5 text-sm rounded-md bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors border border-gray-700"
+          >
+            Export CSV
+          </button>
+          <button
+            onClick={() => handleExport('json')}
+            className="px-3 py-1.5 text-sm rounded-md bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors border border-gray-700"
+          >
+            Export JSON
+          </button>
+          <p className="text-sm text-gray-400">{data.period.label}</p>
+        </div>
       </div>
 
       {/* Period selector */}
@@ -262,6 +382,147 @@ export default function Reports() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Schedule Reports section */}
+      <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium text-gray-100">Scheduled Reports</h3>
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="px-3 py-1.5 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-500 transition-colors"
+          >
+            {showAddForm ? 'Cancel' : 'Add Schedule'}
+          </button>
+        </div>
+
+        {showAddForm && (
+          <div className="mb-4 p-4 rounded-md bg-gray-800/50 border border-gray-700 space-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  placeholder="Weekly team report"
+                  className="w-full px-3 py-1.5 text-sm rounded-md bg-gray-900 border border-gray-700 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Period</label>
+                <select
+                  value={formPeriod}
+                  onChange={(e) => setFormPeriod(e.target.value)}
+                  className="w-full px-3 py-1.5 text-sm rounded-md bg-gray-900 border border-gray-700 text-gray-200 focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Frequency</label>
+                <select
+                  value={formFrequency}
+                  onChange={(e) => setFormFrequency(e.target.value)}
+                  className="w-full px-3 py-1.5 text-sm rounded-md bg-gray-900 border border-gray-700 text-gray-200 focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+              {formFrequency === 'weekly' && (
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Day of Week</label>
+                  <select
+                    value={formDay}
+                    onChange={(e) => setFormDay(Number(e.target.value))}
+                    className="w-full px-3 py-1.5 text-sm rounded-md bg-gray-900 border border-gray-700 text-gray-200 focus:outline-none focus:border-emerald-500"
+                  >
+                    {dayNames.map((name, i) => (
+                      <option key={i} value={i}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {formFrequency === 'monthly' && (
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Day of Month</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={28}
+                    value={formDay}
+                    onChange={(e) => setFormDay(Number(e.target.value))}
+                    className="w-full px-3 py-1.5 text-sm rounded-md bg-gray-900 border border-gray-700 text-gray-200 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              )}
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Hour (UTC)</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={23}
+                  value={formHour}
+                  onChange={(e) => setFormHour(Number(e.target.value))}
+                  className="w-full px-3 py-1.5 text-sm rounded-md bg-gray-900 border border-gray-700 text-gray-200 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+            </div>
+            <button
+              onClick={handleAddSchedule}
+              disabled={!formName.trim()}
+              className="px-4 py-1.5 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Create Schedule
+            </button>
+          </div>
+        )}
+
+        {schedulesLoading ? (
+          <p className="text-sm text-gray-500">Loading schedules...</p>
+        ) : schedules.length === 0 ? (
+          <p className="text-sm text-gray-500">No scheduled reports configured. Click &quot;Add Schedule&quot; to set one up.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead>
+                <tr className="border-b border-gray-800 text-gray-400">
+                  <th className="px-4 py-3 font-medium">Name</th>
+                  <th className="px-4 py-3 font-medium">Period</th>
+                  <th className="px-4 py-3 font-medium">Frequency</th>
+                  <th className="px-4 py-3 font-medium">Next Send</th>
+                  <th className="px-4 py-3 font-medium">Enabled</th>
+                  <th className="px-4 py-3 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {schedules.map((s) => (
+                  <tr key={s.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                    <td className="px-4 py-3 font-medium text-gray-100">{s.name}</td>
+                    <td className="px-4 py-3 text-gray-300 capitalize">{s.period}</td>
+                    <td className="px-4 py-3 text-gray-300 capitalize">{s.frequency}</td>
+                    <td className="px-4 py-3 text-gray-300">{formatNextSend(s)}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-block w-2 h-2 rounded-full ${s.enabled ? 'bg-emerald-400' : 'bg-gray-600'}`} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => handleDeleteSchedule(s.id)}
+                        className="text-red-400 hover:text-red-300 text-xs transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
