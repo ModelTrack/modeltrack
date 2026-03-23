@@ -24,6 +24,18 @@ services:
     depends_on:
       - proxy
 
+  collector:
+    build: ./collector
+    environment:
+      - DATA_DIR=/data
+      - ENABLE_AWS_COSTS=false
+      - ENABLE_OPENCOST=false
+      - ENABLE_GPU_METRICS=false
+    volumes:
+      - ./data:/data
+    depends_on:
+      - api
+
   dashboard:
     build: ./dashboard
     ports:

@@ -1,0 +1,6 @@
+{
+  "ml-training": "ml-research",
+  "inference-prod": "platform",
+  "data-pipelines": "data-eng",
+  "default": "unassigned"
+}
