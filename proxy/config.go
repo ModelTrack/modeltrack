@@ -8,16 +8,19 @@ import (
 
 // Config holds all proxy configuration loaded from environment variables.
 type Config struct {
-	Port             int
-	AnthropicBaseURL string
-	OpenAIBaseURL    string
-	DataDir          string
-	LogLevel         string
-	CostEventsFile   string
-	CacheEnabled     bool
-	CacheMaxEntries  int
-	CacheTTLSeconds  int
-	RoutingFile      string
+	Port                 int
+	AnthropicBaseURL     string
+	OpenAIBaseURL        string
+	BedrockEndpointURL   string // Optional: set BEDROCK_ENDPOINT_URL to enable
+	BedrockRegion        string
+	AzureOpenAIEndpoint  string // Optional: set AZURE_OPENAI_ENDPOINT to enable
+	DataDir              string
+	LogLevel             string
+	CostEventsFile       string
+	CacheEnabled         bool
+	CacheMaxEntries      int
+	CacheTTLSeconds      int
+	RoutingFile          string
 }
 
 // LoadConfig reads configuration from environment variables with sensible defaults.
@@ -26,6 +29,7 @@ func LoadConfig() (*Config, error) {
 		Port:             8080,
 		AnthropicBaseURL: "https://api.anthropic.com",
 		OpenAIBaseURL:    "https://api.openai.com",
+		BedrockRegion:    "us-east-1",
 		DataDir:          "../data",
 		LogLevel:         "info",
 		CacheEnabled:     true,
@@ -47,6 +51,18 @@ func LoadConfig() (*Config, error) {
 
 	if v := os.Getenv("OPENAI_BASE_URL"); v != "" {
 		cfg.OpenAIBaseURL = v
+	}
+
+	if v := os.Getenv("BEDROCK_ENDPOINT_URL"); v != "" {
+		cfg.BedrockEndpointURL = v
+	}
+
+	if v := os.Getenv("BEDROCK_REGION"); v != "" {
+		cfg.BedrockRegion = v
+	}
+
+	if v := os.Getenv("AZURE_OPENAI_ENDPOINT"); v != "" {
+		cfg.AzureOpenAIEndpoint = v
 	}
 
 	if v := os.Getenv("DATA_DIR"); v != "" {

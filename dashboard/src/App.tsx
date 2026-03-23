@@ -7,8 +7,10 @@ import Teams from './pages/Teams';
 import Sessions from './pages/Sessions';
 import Reports from './pages/Reports';
 import Alerts from './pages/Alerts';
+import Estimator from './pages/Estimator';
+import Forecast from './pages/Forecast';
 
-type Page = 'overview' | 'models' | 'features' | 'prompts' | 'teams' | 'sessions' | 'reports' | 'alerts';
+type Page = 'overview' | 'models' | 'features' | 'prompts' | 'teams' | 'sessions' | 'reports' | 'forecast' | 'alerts' | 'estimator';
 
 const navItems: { key: Page; label: string }[] = [
   { key: 'overview', label: 'Overview' },
@@ -18,7 +20,9 @@ const navItems: { key: Page; label: string }[] = [
   { key: 'teams', label: 'Teams' },
   { key: 'sessions', label: 'Sessions' },
   { key: 'reports', label: 'Reports' },
+  { key: 'forecast', label: 'Forecast' },
   { key: 'alerts', label: 'Alerts' },
+  { key: 'estimator', label: 'Estimator' },
 ];
 
 export default function App() {
@@ -60,7 +64,9 @@ export default function App() {
         {page === 'teams' && <Teams />}
         {page === 'sessions' && <Sessions />}
         {page === 'reports' && <Reports />}
+        {page === 'forecast' && <Forecast />}
         {page === 'alerts' && <Alerts />}
+        {page === 'estimator' && <Estimator />}
       </main>
     </div>
   );

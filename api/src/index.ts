@@ -14,6 +14,8 @@ import featuresRoutes from "./routes/features";
 import promptsRoutes from "./routes/prompts";
 import overviewRoutes from "./routes/overview";
 import reportsRoutes from "./routes/reports";
+import forecastRoutes from "./routes/forecast";
+import estimatorRoutes from "./routes/estimator";
 import { startScheduler } from "./services/scheduler";
 
 const app = express();
@@ -43,6 +45,8 @@ app.use("/api/features", featuresRoutes);
 app.use("/api/prompts", promptsRoutes);
 app.use("/api/overview", overviewRoutes);
 app.use("/api/reports", reportsRoutes);
+app.use("/api/forecast", forecastRoutes);
+app.use("/api/estimator", estimatorRoutes);
 
 // Start server
 function main() {

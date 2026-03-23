@@ -74,6 +74,35 @@ var openaiPricing = map[string]ModelPricing{
 	},
 }
 
+// bedrockPricing maps Bedrock model identifiers to their pricing.
+// Bedrock Anthropic models have slightly different pricing from the direct API.
+var bedrockPricing = map[string]ModelPricing{
+	// Claude 3.5 Sonnet on Bedrock — $3.00 / $15.00 per 1M tokens
+	"anthropic.claude-3-5-sonnet-20241022-v2:0": {
+		InputPerToken:      3.00 / 1_000_000,
+		OutputPerToken:     15.00 / 1_000_000,
+		CacheReadPerToken:  0.30 / 1_000_000,
+		CacheWritePerToken: 3.75 / 1_000_000,
+	},
+	// Claude 3.5 Haiku on Bedrock — $0.80 / $4.00 per 1M tokens
+	"anthropic.claude-3-5-haiku-20241022-v1:0": {
+		InputPerToken:      0.80 / 1_000_000,
+		OutputPerToken:     4.00 / 1_000_000,
+		CacheReadPerToken:  0.08 / 1_000_000,
+		CacheWritePerToken: 1.00 / 1_000_000,
+	},
+	// Claude 3 Opus on Bedrock — $15.00 / $75.00 per 1M tokens
+	"anthropic.claude-3-opus-20240229-v1:0": {
+		InputPerToken:      15.00 / 1_000_000,
+		OutputPerToken:     75.00 / 1_000_000,
+		CacheReadPerToken:  1.50 / 1_000_000,
+		CacheWritePerToken: 18.75 / 1_000_000,
+	},
+}
+
+// azurePricing reuses OpenAI pricing since Azure OpenAI uses the same rates.
+var azurePricing = openaiPricing
+
 // CalculateCost computes the total cost in USD for a given model and token counts.
 // Returns 0 if the model is unknown.
 func CalculateCost(provider, model string, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens int) float64 {
@@ -84,6 +113,10 @@ func CalculateCost(provider, model string, inputTokens, outputTokens, cacheReadT
 		pricingTable = anthropicPricing
 	case "openai":
 		pricingTable = openaiPricing
+	case "bedrock":
+		pricingTable = bedrockPricing
+	case "azure":
+		pricingTable = azurePricing
 	default:
 		return 0
 	}

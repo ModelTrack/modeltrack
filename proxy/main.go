@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -57,7 +58,22 @@ func main() {
 
 	// Proxy handler for LLM API routes.
 	proxyHandler := NewProxyHandler(anthropicAdapter, openaiAdapter, eventLogger, budgetTracker, responseCache, modelRouter)
+
+	// Initialize optional Bedrock adapter if configured.
+	if cfg.BedrockEndpointURL != "" {
+		bedrockAdapter := adapters.NewBedrockAdapter(cfg.BedrockEndpointURL, cfg.BedrockRegion)
+		proxyHandler.SetBedrockAdapter(bedrockAdapter)
+	}
+
+	// Initialize optional Azure OpenAI adapter if configured.
+	if cfg.AzureOpenAIEndpoint != "" {
+		azureAdapter := adapters.NewAzureOpenAIAdapter(cfg.AzureOpenAIEndpoint)
+		proxyHandler.SetAzureAdapter(azureAdapter)
+	}
+
 	mux.Handle("/v1/", proxyHandler)
+	mux.Handle("/bedrock/", proxyHandler)
+	mux.Handle("/azure/", proxyHandler)
 
 	// Wrap with CORS middleware.
 	handler := middleware.CORS(mux)
@@ -76,7 +92,14 @@ func main() {
 	log.Printf("  Cost events:    %s", cfg.CostEventsFile)
 	log.Printf("  Log level:      %s", cfg.LogLevel)
 	log.Printf("  Budgets file:   %s", budgetsFile)
-	log.Printf("  Providers:      anthropic (%s), openai (%s)", cfg.AnthropicBaseURL, cfg.OpenAIBaseURL)
+	providers := fmt.Sprintf("anthropic (%s), openai (%s)", cfg.AnthropicBaseURL, cfg.OpenAIBaseURL)
+	if cfg.BedrockEndpointURL != "" {
+		providers += fmt.Sprintf(", bedrock (%s, region=%s)", cfg.BedrockEndpointURL, cfg.BedrockRegion)
+	}
+	if cfg.AzureOpenAIEndpoint != "" {
+		providers += fmt.Sprintf(", azure (%s)", cfg.AzureOpenAIEndpoint)
+	}
+	log.Printf("  Providers:      %s", providers)
 	log.Printf("  Cache:          enabled=%v max_entries=%d ttl=%ds", cfg.CacheEnabled, cfg.CacheMaxEntries, cfg.CacheTTLSeconds)
 	log.Printf("  Routing file:   %s", cfg.RoutingFile)
 

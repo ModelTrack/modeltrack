@@ -20,6 +20,8 @@ import (
 type ProxyHandler struct {
 	anthropic *adapters.AnthropicAdapter
 	openai    *adapters.OpenAIAdapter
+	bedrock   *adapters.BedrockAdapter
+	azure     *adapters.AzureOpenAIAdapter
 	logger    *EventLogger
 	budget    *BudgetTracker
 	cache     *ResponseCache
@@ -36,6 +38,16 @@ func NewProxyHandler(anthropic *adapters.AnthropicAdapter, openai *adapters.Open
 		cache:     cache,
 		router:    router,
 	}
+}
+
+// SetBedrockAdapter sets the optional Bedrock adapter.
+func (h *ProxyHandler) SetBedrockAdapter(b *adapters.BedrockAdapter) {
+	h.bedrock = b
+}
+
+// SetAzureAdapter sets the optional Azure OpenAI adapter.
+func (h *ProxyHandler) SetAzureAdapter(a *adapters.AzureOpenAIAdapter) {
+	h.azure = a
 }
 
 // llmRequestFields holds the fields parsed from the request body needed for caching.
@@ -131,6 +143,10 @@ func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.handleAnthropicMessages(w, r)
 	case "/v1/chat/completions":
 		h.handleOpenAIChatCompletions(w, r)
+	case "/bedrock/v1/messages":
+		h.handleBedrockMessages(w, r)
+	case "/azure/v1/chat/completions":
+		h.handleAzureChatCompletions(w, r)
 	default:
 		http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
 	}
@@ -751,10 +767,252 @@ func suggestCheapModel(provider string) string {
 	switch provider {
 	case "anthropic":
 		return "claude-haiku-4-5"
-	case "openai":
+	case "openai", "azure":
 		return "gpt-4o-mini"
+	case "bedrock":
+		return "anthropic.claude-3-5-haiku-20241022-v1:0"
 	default:
 		return "a cheaper model"
+	}
+}
+
+// handleBedrockMessages proxies requests to AWS Bedrock via the Anthropic Messages format.
+func (h *ProxyHandler) handleBedrockMessages(w http.ResponseWriter, r *http.Request) {
+	if h.bedrock == nil {
+		http.Error(w, `{"error":"bedrock adapter not configured — set BEDROCK_ENDPOINT_URL"}`, http.StatusServiceUnavailable)
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract CostTrack attribution headers.
+	appID := r.Header.Get("X-CostTrack-App")
+	team := r.Header.Get("X-CostTrack-Team")
+	feature := r.Header.Get("X-CostTrack-Feature")
+	customerTier := r.Header.Get("X-CostTrack-Customer-Tier")
+	sessionID := r.Header.Get("X-CostTrack-Session-ID")
+	traceID := r.Header.Get("X-CostTrack-Trace-ID")
+	promptTemplateID := r.Header.Get("X-CostTrack-Prompt-Template")
+
+	// Check budget before forwarding the request.
+	if h.budget != nil && team != "" {
+		budgetResult := h.budget.CheckBudget(team, appID)
+		if budgetResult.Status == BudgetExceeded && budgetResult.Action == "block" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusTooManyRequests)
+			w.Write([]byte(budgetResult.FormatExceededMessage()))
+			return
+		}
+		if budgetResult.Status == BudgetWarning || (budgetResult.Status == BudgetExceeded && budgetResult.Action == "warn") {
+			w.Header().Set("X-CostTrack-Budget-Warning", budgetResult.FormatWarningHeader())
+		}
+	}
+
+	// Read the request body for parsing.
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("ERROR: reading request body: %v", err)
+		http.Error(w, `{"error":"failed to read request body"}`, http.StatusBadRequest)
+		return
+	}
+	r.Body.Close()
+
+	// Parse fields for prompt analysis.
+	var fields llmRequestFields
+	if err := json.Unmarshal(bodyBytes, &fields); err != nil {
+		log.Printf("ERROR: parsing request body: %v", err)
+		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Extract prompt analysis (fingerprint, token breakdown).
+	pa := extractPromptAnalysis(&fields, "anthropic", promptTemplateID)
+
+	// Restore the request body for the adapter.
+	r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+
+	// Proxy the request to Bedrock.
+	result, err := h.bedrock.Proxy(w, r)
+	if err != nil {
+		log.Printf("ERROR: bedrock proxy failed: %v", err)
+		return
+	}
+
+	// Calculate cost.
+	cost := CalculateCost(
+		"bedrock",
+		result.Usage.Model,
+		result.Usage.InputTokens,
+		result.Usage.OutputTokens,
+		result.Usage.CacheReadTokens,
+		result.Usage.CacheWriteTokens,
+	)
+
+	// Build token summary.
+	summary := fmt.Sprintf("in=%d out=%d cache_read=%d cache_write=%d",
+		result.Usage.InputTokens,
+		result.Usage.OutputTokens,
+		result.Usage.CacheReadTokens,
+		result.Usage.CacheWriteTokens,
+	)
+
+	// Log the cost event.
+	event := CostEvent{
+		EventID:            uuid.New().String(),
+		Timestamp:          time.Now().UTC().Format(time.RFC3339Nano),
+		Provider:           "bedrock",
+		Model:              result.Usage.Model,
+		InputTokens:        result.Usage.InputTokens,
+		OutputTokens:       result.Usage.OutputTokens,
+		CacheReadTokens:    result.Usage.CacheReadTokens,
+		CacheWriteTokens:   result.Usage.CacheWriteTokens,
+		CostUSD:            cost,
+		LatencyMs:          result.LatencyMs,
+		StatusCode:         result.StatusCode,
+		IsStreaming:        result.IsStream,
+		AppID:              appID,
+		Team:               team,
+		Feature:            feature,
+		CustomerTier:       customerTier,
+		SessionID:          sessionID,
+		TraceID:            traceID,
+		TokenSummary:       summary,
+		PromptHash:         pa.PromptHash,
+		SystemPromptTokens: pa.SystemPromptTokens,
+		UserPromptTokens:   pa.UserPromptTokens,
+		PromptTemplateID:   pa.PromptTemplateID,
+	}
+
+	h.logger.Log(event)
+
+	// Update budget tracker.
+	if h.budget != nil && team != "" {
+		h.budget.RecordSpend(team, appID, cost)
+		budgetResult := h.budget.CheckBudget(team, appID)
+		if budgetResult.Status == BudgetWarning {
+			w.Header().Set("X-CostTrack-Budget-Warning", budgetResult.FormatWarningHeader())
+		}
+	}
+}
+
+// handleAzureChatCompletions proxies requests to Azure OpenAI in OpenAI format.
+func (h *ProxyHandler) handleAzureChatCompletions(w http.ResponseWriter, r *http.Request) {
+	if h.azure == nil {
+		http.Error(w, `{"error":"azure adapter not configured — set AZURE_OPENAI_ENDPOINT"}`, http.StatusServiceUnavailable)
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract CostTrack attribution headers.
+	appID := r.Header.Get("X-CostTrack-App")
+	team := r.Header.Get("X-CostTrack-Team")
+	feature := r.Header.Get("X-CostTrack-Feature")
+	customerTier := r.Header.Get("X-CostTrack-Customer-Tier")
+	sessionID := r.Header.Get("X-CostTrack-Session-ID")
+	traceID := r.Header.Get("X-CostTrack-Trace-ID")
+	promptTemplateID := r.Header.Get("X-CostTrack-Prompt-Template")
+
+	// Check budget before forwarding the request.
+	if h.budget != nil && team != "" {
+		budgetResult := h.budget.CheckBudget(team, appID)
+		if budgetResult.Status == BudgetExceeded && budgetResult.Action == "block" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusTooManyRequests)
+			w.Write([]byte(budgetResult.FormatExceededMessage()))
+			return
+		}
+		if budgetResult.Status == BudgetWarning || (budgetResult.Status == BudgetExceeded && budgetResult.Action == "warn") {
+			w.Header().Set("X-CostTrack-Budget-Warning", budgetResult.FormatWarningHeader())
+		}
+	}
+
+	// Read the request body for parsing.
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("ERROR: reading request body: %v", err)
+		http.Error(w, `{"error":"failed to read request body"}`, http.StatusBadRequest)
+		return
+	}
+	r.Body.Close()
+
+	// Parse fields for prompt analysis.
+	var fields llmRequestFields
+	if err := json.Unmarshal(bodyBytes, &fields); err != nil {
+		log.Printf("ERROR: parsing request body: %v", err)
+		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Extract prompt analysis (fingerprint, token breakdown).
+	pa := extractPromptAnalysis(&fields, "openai", promptTemplateID)
+
+	// Restore the request body for the adapter.
+	r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+
+	// Proxy the request to Azure OpenAI.
+	result, err := h.azure.Proxy(w, r)
+	if err != nil {
+		log.Printf("ERROR: azure proxy failed: %v", err)
+		return
+	}
+
+	// Calculate cost (Azure uses same pricing as OpenAI).
+	cost := CalculateCost(
+		"azure",
+		result.Usage.Model,
+		result.Usage.InputTokens,
+		result.Usage.OutputTokens,
+		result.Usage.CacheReadTokens,
+		result.Usage.CacheWriteTokens,
+	)
+
+	// Build token summary.
+	summary := fmt.Sprintf("in=%d out=%d",
+		result.Usage.InputTokens,
+		result.Usage.OutputTokens,
+	)
+
+	// Log the cost event.
+	event := CostEvent{
+		EventID:            uuid.New().String(),
+		Timestamp:          time.Now().UTC().Format(time.RFC3339Nano),
+		Provider:           "azure",
+		Model:              result.Usage.Model,
+		InputTokens:        result.Usage.InputTokens,
+		OutputTokens:       result.Usage.OutputTokens,
+		CostUSD:            cost,
+		LatencyMs:          result.LatencyMs,
+		StatusCode:         result.StatusCode,
+		IsStreaming:        result.IsStream,
+		AppID:              appID,
+		Team:               team,
+		Feature:            feature,
+		CustomerTier:       customerTier,
+		SessionID:          sessionID,
+		TraceID:            traceID,
+		TokenSummary:       summary,
+		PromptHash:         pa.PromptHash,
+		SystemPromptTokens: pa.SystemPromptTokens,
+		UserPromptTokens:   pa.UserPromptTokens,
+		PromptTemplateID:   pa.PromptTemplateID,
+	}
+
+	h.logger.Log(event)
+
+	// Update budget tracker.
+	if h.budget != nil && team != "" {
+		h.budget.RecordSpend(team, appID, cost)
+		budgetResult := h.budget.CheckBudget(team, appID)
+		if budgetResult.Status == BudgetWarning {
+			w.Header().Set("X-CostTrack-Budget-Warning", budgetResult.FormatWarningHeader())
+		}
 	}
 }
 

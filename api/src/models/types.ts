@@ -121,6 +121,49 @@ export interface OptimizationAction {
   estimated_savings: number;
 }
 
+export interface CostEstimate {
+  cost_per_request: number;
+  daily_cost: number;
+  weekly_cost: number;
+  monthly_cost: number;
+  quarterly_cost: number;
+  annual_cost: number;
+}
+
+export interface ModelComparison {
+  model: string;
+  provider: string;
+  cost_per_request: number;
+  monthly_cost: number;
+  is_selected: boolean;
+  savings_vs_selected: number;
+}
+
+export interface EstimatorResult {
+  estimate: CostEstimate;
+  with_caching: {
+    cost_per_request: number;
+    daily_cost: number;
+    monthly_cost: number;
+    savings_vs_no_cache: number;
+    savings_pct: number;
+  };
+  model_comparison: ModelComparison[];
+  similar_features: Array<{
+    feature: string;
+    avg_cost_per_request: number;
+    monthly_cost: number;
+    request_count: number;
+  }>;
+}
+
+export interface ModelPricing {
+  provider: string;
+  model: string;
+  input_per_mtok: number;
+  output_per_mtok: number;
+}
+
 export interface ExecutiveReport {
   period: { start: string; end: string; label: string };
   summary: ReportSummary;
@@ -131,4 +174,37 @@ export interface ExecutiveReport {
   daily_spend: Array<{ date: string; spend: number; requests: number }>;
   optimization_actions: OptimizationAction[];
   recommendations: string[];
+}
+
+export interface ForecastPoint {
+  date: string;
+  predicted: number;
+  low: number;
+  high: number;
+}
+
+export interface ForecastSummary {
+  current_monthly_run_rate: number;
+  projected_next_month: number;
+  projected_next_quarter: number;
+  growth_rate_pct: number;
+  confidence: 'low' | 'medium' | 'high';
+}
+
+export interface ForecastScenarios {
+  current_trend: { monthly: number; quarterly: number };
+  if_traffic_doubles: { monthly: number; quarterly: number };
+  if_switch_to_cheaper_model: {
+    monthly: number;
+    quarterly: number;
+    savings: number;
+    description: string;
+  };
+}
+
+export interface ForecastData {
+  historical: Array<{ date: string; spend: number }>;
+  forecast: ForecastPoint[];
+  summary: ForecastSummary;
+  scenarios: ForecastScenarios;
 }
