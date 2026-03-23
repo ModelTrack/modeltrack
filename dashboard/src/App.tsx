@@ -126,7 +126,7 @@ export default function App() {
             <h1 className="text-lg font-bold tracking-tight">
               <span className="text-emerald-400">Model</span>Track
             </h1>
-            <p className="text-xs text-gray-500 mt-0.5">AI FinOps Platform</p>
+            <p className="text-xs text-gray-500 mt-0.5">Real-time AI cost control</p>
           </div>
           <nav className="flex-1 overflow-y-auto px-3 py-4">
             {navGroups.map((group, gi) => (
