@@ -77,24 +77,25 @@ export default function Overview({ setPage }: OverviewProps) {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <MetricCard
-                label="Spend Today"
-                value={formatCurrency(overviewData.spend_today)}
-                tooltip="Total AI API spend incurred today (UTC)"
-              />
-              <MetricCard
-                label="This Week"
-                value={formatCurrency(overviewData.spend_this_week)}
-              />
-              <MetricCard
-                label="This Month"
+                label="Total Spend"
                 value={formatCurrency(overviewData.spend_this_month)}
-                tooltip="Cumulative spend for the current calendar month"
+                tooltip={`Total AI spend for ${dateRange.label.toLowerCase()}`}
                 sparkline={spendSparkline}
               />
               <MetricCard
                 label="Total Requests"
                 value={formatNumber(overviewData.total_requests)}
-                tooltip="Total LLM API calls tracked this month"
+                tooltip={`API calls tracked for ${dateRange.label.toLowerCase()}`}
+              />
+              <MetricCard
+                label="Avg Cost/Request"
+                value={formatCurrency(overviewData.total_requests > 0 ? overviewData.spend_this_month / overviewData.total_requests : 0)}
+                tooltip="Average cost per LLM API call"
+              />
+              <MetricCard
+                label="Spend Today"
+                value={formatCurrency(overviewData.spend_today)}
+                tooltip="Total AI API spend incurred today (UTC)"
               />
             </div>
 
@@ -115,7 +116,7 @@ export default function Overview({ setPage }: OverviewProps) {
               )}
             </div>
 
-            <SpendChart data={chartData} title="30-Day Spend Trend" />
+            <SpendChart data={chartData} title={`${dateRange.label} Spend Trend`} />
           </div>
         );
       }}
