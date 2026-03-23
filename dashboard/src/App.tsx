@@ -128,7 +128,7 @@ export default function App() {
             </h1>
             <p className="text-xs text-gray-500 mt-0.5">AI FinOps Platform</p>
           </div>
-          <nav className="flex-1 px-3 py-4">
+          <nav className="flex-1 overflow-y-auto px-3 py-4">
             {navGroups.map((group, gi) => (
               <div key={group.label} className={gi > 0 ? 'mt-6' : ''}>
                 <p className="px-3 mb-2 text-[11px] uppercase tracking-wider text-gray-500 font-medium">
@@ -171,7 +171,7 @@ export default function App() {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto p-8">
+        <main className="flex-1 overflow-y-auto p-8 min-h-screen">
           <div key={page} className="animate-fade-in">
             <ErrorBoundary key={page}>
               <PageContent page={page} setPage={setPage} />
