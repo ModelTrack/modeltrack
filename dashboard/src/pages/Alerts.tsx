@@ -132,23 +132,25 @@ export default function Alerts() {
           amount: a.hourly_spend,
         }));
 
-        const visibleAlerts = allAlerts
-          .filter((a) => !dismissedIds.has(a.id))
+        const undismissedAlerts = allAlerts.filter((a) => !dismissedIds.has(a.id));
+        const visibleAlerts = undismissedAlerts
           .filter((a) => severityFilter === 'all' || a.severity === severityFilter);
 
-        const criticalCount = allAlerts.filter((a) => a.severity === 'critical' && !dismissedIds.has(a.id)).length;
-        const warningCount = allAlerts.filter((a) => a.severity === 'warning' && !dismissedIds.has(a.id)).length;
+        const criticalCount = undismissedAlerts.filter((a) => a.severity === 'critical').length;
+        const warningCount = undismissedAlerts.filter((a) => a.severity === 'warning').length;
+        const totalCount = undismissedAlerts.length;
+        const dismissedCount = allAlerts.length - undismissedAlerts.length;
 
         return (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-semibold text-gray-100">Alerts & Budgets</h2>
-              {dismissedIds.size > 0 && (
+              {dismissedCount > 0 && (
                 <button
                   onClick={clearAllDismissed}
                   className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
                 >
-                  Restore {dismissedIds.size} dismissed
+                  Restore {dismissedCount} dismissed
                 </button>
               )}
             </div>
@@ -245,7 +247,7 @@ export default function Alerts() {
                     >
                       {s === 'critical' && <span className="w-2 h-2 rounded-full bg-red-500" />}
                       {s === 'warning' && <span className="w-2 h-2 rounded-full bg-yellow-500" />}
-                      {s === 'all' ? `All (${allAlerts.length - dismissedIds.size})` :
+                      {s === 'all' ? `All (${totalCount})` :
                        s === 'critical' ? `Critical (${criticalCount})` :
                        `Warning (${warningCount})`}
                     </button>
