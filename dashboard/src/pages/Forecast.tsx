@@ -74,26 +74,33 @@ export default function Forecast() {
         // Build unified chart data
         const lastHistoricalDate = historical.length > 0 ? historical[historical.length - 1].date : '';
 
+        // Build chart data — the last historical point gets BOTH actual and predicted
+        // values so the solid line and dashed line connect seamlessly at the boundary.
+        const lastActual = historical.length > 0 ? historical[historical.length - 1].spend : 0;
+        const firstForecast = forecast.length > 0 ? forecast[0] : null;
+
         const chartData = [
-          ...historical.map((h) => ({
+          // Historical points (actual only, no forecast)
+          ...historical.slice(0, -1).map((h) => ({
             date: h.date,
             actual: h.spend,
             predicted: null as number | null,
             low: null as number | null,
             high: null as number | null,
           })),
-          // Bridge point: last historical day also starts forecast
-          ...(forecast.length > 0 && historical.length > 0
+          // Bridge point: last historical day has BOTH actual and predicted
+          ...(historical.length > 0
             ? [
                 {
                   date: lastHistoricalDate,
-                  actual: historical[historical.length - 1].spend,
-                  predicted: forecast[0].predicted,
-                  low: forecast[0].low,
-                  high: forecast[0].high,
+                  actual: lastActual,
+                  predicted: firstForecast ? firstForecast.predicted : lastActual,
+                  low: firstForecast ? firstForecast.low : null as number | null,
+                  high: firstForecast ? firstForecast.high : null as number | null,
                 },
               ]
             : []),
+          // Forecast points (predicted only, no actual)
           ...forecast.map((f) => ({
             date: f.date,
             actual: null as number | null,
