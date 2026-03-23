@@ -34,6 +34,6 @@
       "enabled": true
     }
   ],
-  "opt_out_header": "X-CostTrack-No-Route",
+  "opt_out_header": "X-ModelTrack-No-Route",
   "fallback_behavior": "pass_through"
 }

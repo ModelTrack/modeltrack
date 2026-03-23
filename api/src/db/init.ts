@@ -4,7 +4,7 @@ import path from "path";
 let db: Database.Database | null = null;
 
 export function initDatabase(): Database.Database {
-  const dbPath = process.env.DB_PATH || "../data/costtrack.db";
+  const dbPath = process.env.DB_PATH || "../data/modeltrack.db";
   const resolvedPath = path.resolve(__dirname, "../../", dbPath);
 
   console.log(`Initializing SQLite at: ${resolvedPath}`);

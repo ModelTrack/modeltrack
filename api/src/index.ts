@@ -66,7 +66,7 @@ function main() {
     startScheduler();
 
     app.listen(PORT, () => {
-      console.log(`CostTrack API server running on http://localhost:${PORT}`);
+      console.log(`ModelTrack API server running on http://localhost:${PORT}`);
       console.log(`Dashboard CORS enabled for http://localhost:5173`);
     });
   } catch (err) {

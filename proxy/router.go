@@ -66,7 +66,7 @@ func NewModelRouter(routingFile string) *ModelRouter {
 		stopReload:  make(chan struct{}),
 		reloadDone:  make(chan struct{}),
 		config: RoutingConfig{
-			OptOutHeader:     "X-CostTrack-No-Route",
+			OptOutHeader:     "X-ModelTrack-No-Route",
 			FallbackBehavior: "pass_through",
 		},
 	}
@@ -99,7 +99,7 @@ func (mr *ModelRouter) loadConfig() {
 	}
 
 	if cfg.OptOutHeader == "" {
-		cfg.OptOutHeader = "X-CostTrack-No-Route"
+		cfg.OptOutHeader = "X-ModelTrack-No-Route"
 	}
 	if cfg.FallbackBehavior == "" {
 		cfg.FallbackBehavior = "pass_through"

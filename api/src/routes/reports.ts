@@ -316,7 +316,7 @@ export function generateExecutiveReport(period: string, endDate: string): Execut
 function reportToCsv(report: ExecutiveReport): string {
   const lines: string[] = [];
 
-  lines.push("CostTrack Executive Report");
+  lines.push("ModelTrack Executive Report");
   lines.push(`Period,${report.period.label}`);
   lines.push("");
 
@@ -366,7 +366,7 @@ function csvEscape(value: string): string {
 
 function getExportFilename(report: ExecutiveReport, format: string): string {
   const dateSlug = report.period.end.slice(0, 7); // e.g. "2026-03"
-  return `costtrack-report-${dateSlug}.${format}`;
+  return `modeltrack-report-${dateSlug}.${format}`;
 }
 
 // GET /api/reports/executive

@@ -114,7 +114,7 @@ export default function App() {
   const [page, setPage] = useState<Page>('overview');
 
   useEffect(() => {
-    document.title = `CostTrack - ${allNavItems.find((item) => item.key === page)?.label || 'Dashboard'}`;
+    document.title = `ModelTrack - ${allNavItems.find((item) => item.key === page)?.label || 'Dashboard'}`;
   }, [page]);
 
   return (
@@ -124,7 +124,7 @@ export default function App() {
         <aside className="w-56 shrink-0 border-r border-gray-800 flex flex-col">
           <div className="px-5 py-5 border-b border-gray-800">
             <h1 className="text-lg font-bold tracking-tight">
-              <span className="text-emerald-400">Cost</span>Track
+              <span className="text-emerald-400">Model</span>Track
             </h1>
             <p className="text-xs text-gray-500 mt-0.5">AI FinOps Platform</p>
           </div>

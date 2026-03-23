@@ -1,7 +1,7 @@
 {
-  "name": "costtrack-api",
+  "name": "modeltrack-api",
   "version": "1.0.0",
-  "description": "CostTrack AI FinOps Platform - API Server",
+  "description": "ModelTrack AI FinOps Platform - API Server",
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --exec ts-node src/index.ts",

@@ -36,7 +36,7 @@ func TestRoute_BudgetDowngrade(t *testing.T) {
 				Enabled:    true,
 			},
 		},
-		OptOutHeader:     "X-CostTrack-No-Route",
+		OptOutHeader:     "X-ModelTrack-No-Route",
 		FallbackBehavior: "pass_through",
 	}
 	routingPath := writeRoutingFile(t, dir, cfg)
@@ -79,7 +79,7 @@ func TestRoute_BudgetUnderThreshold(t *testing.T) {
 				Enabled:    true,
 			},
 		},
-		OptOutHeader:     "X-CostTrack-No-Route",
+		OptOutHeader:     "X-ModelTrack-No-Route",
 		FallbackBehavior: "pass_through",
 	}
 	routingPath := writeRoutingFile(t, dir, cfg)
@@ -110,7 +110,7 @@ func TestRoute_BlockExpensive(t *testing.T) {
 				Enabled:    true,
 			},
 		},
-		OptOutHeader:     "X-CostTrack-No-Route",
+		OptOutHeader:     "X-ModelTrack-No-Route",
 		FallbackBehavior: "pass_through",
 	}
 	routingPath := writeRoutingFile(t, dir, cfg)
@@ -144,7 +144,7 @@ func TestRoute_ProviderMismatch(t *testing.T) {
 				Enabled:    true,
 			},
 		},
-		OptOutHeader:     "X-CostTrack-No-Route",
+		OptOutHeader:     "X-ModelTrack-No-Route",
 		FallbackBehavior: "pass_through",
 	}
 	routingPath := writeRoutingFile(t, dir, cfg)
@@ -175,7 +175,7 @@ func TestRoute_DisabledRule(t *testing.T) {
 				Enabled:    false,
 			},
 		},
-		OptOutHeader:     "X-CostTrack-No-Route",
+		OptOutHeader:     "X-ModelTrack-No-Route",
 		FallbackBehavior: "pass_through",
 	}
 	routingPath := writeRoutingFile(t, dir, cfg)
@@ -205,7 +205,7 @@ func TestRoute_ModelNotInFromList(t *testing.T) {
 				Enabled:    true,
 			},
 		},
-		OptOutHeader:     "X-CostTrack-No-Route",
+		OptOutHeader:     "X-ModelTrack-No-Route",
 		FallbackBehavior: "pass_through",
 	}
 	routingPath := writeRoutingFile(t, dir, cfg)
@@ -246,7 +246,7 @@ func TestRoute_FirstMatchWins(t *testing.T) {
 				Enabled:    true,
 			},
 		},
-		OptOutHeader:     "X-CostTrack-No-Route",
+		OptOutHeader:     "X-ModelTrack-No-Route",
 		FallbackBehavior: "pass_through",
 	}
 	routingPath := writeRoutingFile(t, dir, cfg)
@@ -292,7 +292,7 @@ func TestRoute_NoBudgetSet(t *testing.T) {
 				Enabled:    true,
 			},
 		},
-		OptOutHeader:     "X-CostTrack-No-Route",
+		OptOutHeader:     "X-ModelTrack-No-Route",
 		FallbackBehavior: "pass_through",
 	}
 	routingPath := writeRoutingFile(t, dir, cfg)
@@ -341,7 +341,7 @@ func TestGetStats(t *testing.T) {
 				Enabled:    true,
 			},
 		},
-		OptOutHeader:     "X-CostTrack-No-Route",
+		OptOutHeader:     "X-ModelTrack-No-Route",
 		FallbackBehavior: "pass_through",
 	}
 	routingPath := writeRoutingFile(t, dir, cfg)
@@ -418,7 +418,7 @@ func TestRoute_OpenAIDowngrade(t *testing.T) {
 				Enabled:    true,
 			},
 		},
-		OptOutHeader:     "X-CostTrack-No-Route",
+		OptOutHeader:     "X-ModelTrack-No-Route",
 		FallbackBehavior: "pass_through",
 	}
 	routingPath := writeRoutingFile(t, dir, cfg)

@@ -12,7 +12,7 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"github.com/costtrack/proxy/adapters"
+	"github.com/modeltrack/proxy/adapters"
 	"github.com/google/uuid"
 )
 
@@ -161,8 +161,8 @@ func (h *ProxyHandler) isCacheable(r *http.Request, fields *llmRequestFields) bo
 	if fields.Stream {
 		return false
 	}
-	// Don't cache if X-CostTrack-No-Cache header is set.
-	if r.Header.Get("X-CostTrack-No-Cache") == "true" {
+	// Don't cache if X-ModelTrack-No-Cache header is set.
+	if r.Header.Get("X-ModelTrack-No-Cache") == "true" {
 		return false
 	}
 	// Don't cache if temperature > 0 (non-deterministic).
@@ -179,14 +179,14 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Extract CostTrack attribution headers.
-	appID := r.Header.Get("X-CostTrack-App")
-	team := r.Header.Get("X-CostTrack-Team")
-	feature := r.Header.Get("X-CostTrack-Feature")
-	customerTier := r.Header.Get("X-CostTrack-Customer-Tier")
-	sessionID := r.Header.Get("X-CostTrack-Session-ID")
-	traceID := r.Header.Get("X-CostTrack-Trace-ID")
-	promptTemplateID := r.Header.Get("X-CostTrack-Prompt-Template")
+	// Extract ModelTrack attribution headers.
+	appID := r.Header.Get("X-ModelTrack-App")
+	team := r.Header.Get("X-ModelTrack-Team")
+	feature := r.Header.Get("X-ModelTrack-Feature")
+	customerTier := r.Header.Get("X-ModelTrack-Customer-Tier")
+	sessionID := r.Header.Get("X-ModelTrack-Session-ID")
+	traceID := r.Header.Get("X-ModelTrack-Trace-ID")
+	promptTemplateID := r.Header.Get("X-ModelTrack-Prompt-Template")
 
 	// Check budget before forwarding the request.
 	if h.budget != nil && team != "" {
@@ -198,7 +198,7 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 			return
 		}
 		if budgetResult.Status == BudgetWarning || (budgetResult.Status == BudgetExceeded && budgetResult.Action == "warn") {
-			w.Header().Set("X-CostTrack-Budget-Warning", budgetResult.FormatWarningHeader())
+			w.Header().Set("X-ModelTrack-Budget-Warning", budgetResult.FormatWarningHeader())
 		}
 	}
 
@@ -261,10 +261,10 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 			fields.Model = routingDecision.NewModel
 
 			// Set routing response headers.
-			w.Header().Set("X-CostTrack-Routed", "true")
-			w.Header().Set("X-CostTrack-Original-Model", routingDecision.OriginalModel)
-			w.Header().Set("X-CostTrack-Routed-To", routingDecision.NewModel)
-			w.Header().Set("X-CostTrack-Route-Reason", routingDecision.Reason)
+			w.Header().Set("X-ModelTrack-Routed", "true")
+			w.Header().Set("X-ModelTrack-Original-Model", routingDecision.OriginalModel)
+			w.Header().Set("X-ModelTrack-Routed-To", routingDecision.NewModel)
+			w.Header().Set("X-ModelTrack-Route-Reason", routingDecision.Reason)
 
 			log.Printf("ROUTER: routed %s -> %s for team %q (rule: %s)",
 				routingDecision.OriginalModel, routingDecision.NewModel, team, routingDecision.RuleName)
@@ -281,8 +281,8 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 		if entry, ok := h.cache.Get(cacheKey); ok {
 			// Cache HIT — return cached response directly.
 			w.Header().Set("Content-Type", entry.ContentType)
-			w.Header().Set("X-CostTrack-Cache", "HIT")
-			w.Header().Set("X-CostTrack-Cache-Savings", fmt.Sprintf("$%.4f", entry.CostUSD))
+			w.Header().Set("X-ModelTrack-Cache", "HIT")
+			w.Header().Set("X-ModelTrack-Cache-Savings", fmt.Sprintf("$%.4f", entry.CostUSD))
 			w.WriteHeader(http.StatusOK)
 			w.Write(entry.ResponseBody)
 
@@ -349,7 +349,7 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 		}
 
 		// Add cache MISS header.
-		w.Header().Set("X-CostTrack-Cache", "MISS")
+		w.Header().Set("X-ModelTrack-Cache", "MISS")
 
 		w.WriteHeader(recResult.StatusCode)
 		respBody := recorder.Body.Bytes()
@@ -439,7 +439,7 @@ func (h *ProxyHandler) handleAnthropicMessages(w http.ResponseWriter, r *http.Re
 		h.budget.RecordSpend(team, appID, cost)
 		budgetResult := h.budget.CheckBudget(team, appID)
 		if budgetResult.Status == BudgetWarning {
-			w.Header().Set("X-CostTrack-Budget-Warning", budgetResult.FormatWarningHeader())
+			w.Header().Set("X-ModelTrack-Budget-Warning", budgetResult.FormatWarningHeader())
 		}
 	}
 }
@@ -451,14 +451,14 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 		return
 	}
 
-	// Extract CostTrack attribution headers.
-	appID := r.Header.Get("X-CostTrack-App")
-	team := r.Header.Get("X-CostTrack-Team")
-	feature := r.Header.Get("X-CostTrack-Feature")
-	customerTier := r.Header.Get("X-CostTrack-Customer-Tier")
-	sessionID := r.Header.Get("X-CostTrack-Session-ID")
-	traceID := r.Header.Get("X-CostTrack-Trace-ID")
-	promptTemplateID := r.Header.Get("X-CostTrack-Prompt-Template")
+	// Extract ModelTrack attribution headers.
+	appID := r.Header.Get("X-ModelTrack-App")
+	team := r.Header.Get("X-ModelTrack-Team")
+	feature := r.Header.Get("X-ModelTrack-Feature")
+	customerTier := r.Header.Get("X-ModelTrack-Customer-Tier")
+	sessionID := r.Header.Get("X-ModelTrack-Session-ID")
+	traceID := r.Header.Get("X-ModelTrack-Trace-ID")
+	promptTemplateID := r.Header.Get("X-ModelTrack-Prompt-Template")
 
 	// Check budget before forwarding the request.
 	if h.budget != nil && team != "" {
@@ -470,7 +470,7 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 			return
 		}
 		if budgetResult.Status == BudgetWarning || (budgetResult.Status == BudgetExceeded && budgetResult.Action == "warn") {
-			w.Header().Set("X-CostTrack-Budget-Warning", budgetResult.FormatWarningHeader())
+			w.Header().Set("X-ModelTrack-Budget-Warning", budgetResult.FormatWarningHeader())
 		}
 	}
 
@@ -533,10 +533,10 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 			fields.Model = routingDecision.NewModel
 
 			// Set routing response headers.
-			w.Header().Set("X-CostTrack-Routed", "true")
-			w.Header().Set("X-CostTrack-Original-Model", routingDecision.OriginalModel)
-			w.Header().Set("X-CostTrack-Routed-To", routingDecision.NewModel)
-			w.Header().Set("X-CostTrack-Route-Reason", routingDecision.Reason)
+			w.Header().Set("X-ModelTrack-Routed", "true")
+			w.Header().Set("X-ModelTrack-Original-Model", routingDecision.OriginalModel)
+			w.Header().Set("X-ModelTrack-Routed-To", routingDecision.NewModel)
+			w.Header().Set("X-ModelTrack-Route-Reason", routingDecision.Reason)
 
 			log.Printf("ROUTER: routed %s -> %s for team %q (rule: %s)",
 				routingDecision.OriginalModel, routingDecision.NewModel, team, routingDecision.RuleName)
@@ -553,8 +553,8 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 		if entry, ok := h.cache.Get(cacheKey); ok {
 			// Cache HIT — return cached response directly.
 			w.Header().Set("Content-Type", entry.ContentType)
-			w.Header().Set("X-CostTrack-Cache", "HIT")
-			w.Header().Set("X-CostTrack-Cache-Savings", fmt.Sprintf("$%.4f", entry.CostUSD))
+			w.Header().Set("X-ModelTrack-Cache", "HIT")
+			w.Header().Set("X-ModelTrack-Cache-Savings", fmt.Sprintf("$%.4f", entry.CostUSD))
 			w.WriteHeader(http.StatusOK)
 			w.Write(entry.ResponseBody)
 
@@ -621,7 +621,7 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 		}
 
 		// Add cache MISS header.
-		w.Header().Set("X-CostTrack-Cache", "MISS")
+		w.Header().Set("X-ModelTrack-Cache", "MISS")
 
 		w.WriteHeader(recResult.StatusCode)
 		respBody := recorder.Body.Bytes()
@@ -707,7 +707,7 @@ func (h *ProxyHandler) handleOpenAIChatCompletions(w http.ResponseWriter, r *htt
 		h.budget.RecordSpend(team, appID, cost)
 		budgetResult := h.budget.CheckBudget(team, appID)
 		if budgetResult.Status == BudgetWarning {
-			w.Header().Set("X-CostTrack-Budget-Warning", budgetResult.FormatWarningHeader())
+			w.Header().Set("X-ModelTrack-Budget-Warning", budgetResult.FormatWarningHeader())
 		}
 	}
 }
@@ -788,14 +788,14 @@ func (h *ProxyHandler) handleBedrockMessages(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Extract CostTrack attribution headers.
-	appID := r.Header.Get("X-CostTrack-App")
-	team := r.Header.Get("X-CostTrack-Team")
-	feature := r.Header.Get("X-CostTrack-Feature")
-	customerTier := r.Header.Get("X-CostTrack-Customer-Tier")
-	sessionID := r.Header.Get("X-CostTrack-Session-ID")
-	traceID := r.Header.Get("X-CostTrack-Trace-ID")
-	promptTemplateID := r.Header.Get("X-CostTrack-Prompt-Template")
+	// Extract ModelTrack attribution headers.
+	appID := r.Header.Get("X-ModelTrack-App")
+	team := r.Header.Get("X-ModelTrack-Team")
+	feature := r.Header.Get("X-ModelTrack-Feature")
+	customerTier := r.Header.Get("X-ModelTrack-Customer-Tier")
+	sessionID := r.Header.Get("X-ModelTrack-Session-ID")
+	traceID := r.Header.Get("X-ModelTrack-Trace-ID")
+	promptTemplateID := r.Header.Get("X-ModelTrack-Prompt-Template")
 
 	// Check budget before forwarding the request.
 	if h.budget != nil && team != "" {
@@ -807,7 +807,7 @@ func (h *ProxyHandler) handleBedrockMessages(w http.ResponseWriter, r *http.Requ
 			return
 		}
 		if budgetResult.Status == BudgetWarning || (budgetResult.Status == BudgetExceeded && budgetResult.Action == "warn") {
-			w.Header().Set("X-CostTrack-Budget-Warning", budgetResult.FormatWarningHeader())
+			w.Header().Set("X-ModelTrack-Budget-Warning", budgetResult.FormatWarningHeader())
 		}
 	}
 
@@ -857,10 +857,10 @@ func (h *ProxyHandler) handleBedrockMessages(w http.ResponseWriter, r *http.Requ
 					fields.Model = routingDecision.NewModel
 				}
 			}
-			w.Header().Set("X-CostTrack-Routed", "true")
-			w.Header().Set("X-CostTrack-Original-Model", routingDecision.OriginalModel)
-			w.Header().Set("X-CostTrack-Routed-To", routingDecision.NewModel)
-			w.Header().Set("X-CostTrack-Route-Reason", routingDecision.Reason)
+			w.Header().Set("X-ModelTrack-Routed", "true")
+			w.Header().Set("X-ModelTrack-Original-Model", routingDecision.OriginalModel)
+			w.Header().Set("X-ModelTrack-Routed-To", routingDecision.NewModel)
+			w.Header().Set("X-ModelTrack-Route-Reason", routingDecision.Reason)
 		}
 	}
 
@@ -929,7 +929,7 @@ func (h *ProxyHandler) handleBedrockMessages(w http.ResponseWriter, r *http.Requ
 		h.budget.RecordSpend(team, appID, cost)
 		budgetResult := h.budget.CheckBudget(team, appID)
 		if budgetResult.Status == BudgetWarning {
-			w.Header().Set("X-CostTrack-Budget-Warning", budgetResult.FormatWarningHeader())
+			w.Header().Set("X-ModelTrack-Budget-Warning", budgetResult.FormatWarningHeader())
 		}
 	}
 }
@@ -946,14 +946,14 @@ func (h *ProxyHandler) handleAzureChatCompletions(w http.ResponseWriter, r *http
 		return
 	}
 
-	// Extract CostTrack attribution headers.
-	appID := r.Header.Get("X-CostTrack-App")
-	team := r.Header.Get("X-CostTrack-Team")
-	feature := r.Header.Get("X-CostTrack-Feature")
-	customerTier := r.Header.Get("X-CostTrack-Customer-Tier")
-	sessionID := r.Header.Get("X-CostTrack-Session-ID")
-	traceID := r.Header.Get("X-CostTrack-Trace-ID")
-	promptTemplateID := r.Header.Get("X-CostTrack-Prompt-Template")
+	// Extract ModelTrack attribution headers.
+	appID := r.Header.Get("X-ModelTrack-App")
+	team := r.Header.Get("X-ModelTrack-Team")
+	feature := r.Header.Get("X-ModelTrack-Feature")
+	customerTier := r.Header.Get("X-ModelTrack-Customer-Tier")
+	sessionID := r.Header.Get("X-ModelTrack-Session-ID")
+	traceID := r.Header.Get("X-ModelTrack-Trace-ID")
+	promptTemplateID := r.Header.Get("X-ModelTrack-Prompt-Template")
 
 	// Check budget before forwarding the request.
 	if h.budget != nil && team != "" {
@@ -965,7 +965,7 @@ func (h *ProxyHandler) handleAzureChatCompletions(w http.ResponseWriter, r *http
 			return
 		}
 		if budgetResult.Status == BudgetWarning || (budgetResult.Status == BudgetExceeded && budgetResult.Action == "warn") {
-			w.Header().Set("X-CostTrack-Budget-Warning", budgetResult.FormatWarningHeader())
+			w.Header().Set("X-ModelTrack-Budget-Warning", budgetResult.FormatWarningHeader())
 		}
 	}
 
@@ -1015,10 +1015,10 @@ func (h *ProxyHandler) handleAzureChatCompletions(w http.ResponseWriter, r *http
 					fields.Model = routingDecision.NewModel
 				}
 			}
-			w.Header().Set("X-CostTrack-Routed", "true")
-			w.Header().Set("X-CostTrack-Original-Model", routingDecision.OriginalModel)
-			w.Header().Set("X-CostTrack-Routed-To", routingDecision.NewModel)
-			w.Header().Set("X-CostTrack-Route-Reason", routingDecision.Reason)
+			w.Header().Set("X-ModelTrack-Routed", "true")
+			w.Header().Set("X-ModelTrack-Original-Model", routingDecision.OriginalModel)
+			w.Header().Set("X-ModelTrack-Routed-To", routingDecision.NewModel)
+			w.Header().Set("X-ModelTrack-Route-Reason", routingDecision.Reason)
 		}
 	}
 
@@ -1083,7 +1083,7 @@ func (h *ProxyHandler) handleAzureChatCompletions(w http.ResponseWriter, r *http
 		h.budget.RecordSpend(team, appID, cost)
 		budgetResult := h.budget.CheckBudget(team, appID)
 		if budgetResult.Status == BudgetWarning {
-			w.Header().Set("X-CostTrack-Budget-Warning", budgetResult.FormatWarningHeader())
+			w.Header().Set("X-ModelTrack-Budget-Warning", budgetResult.FormatWarningHeader())
 		}
 	}
 }

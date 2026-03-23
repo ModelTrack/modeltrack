@@ -9,7 +9,7 @@ func CORS(next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers",
 			"Accept, Authorization, Content-Type, Anthropic-Version, Anthropic-Beta, "+
-				"X-Api-Key, X-CostTrack-App, X-CostTrack-Team, X-CostTrack-Feature, X-CostTrack-Customer-Tier")
+				"X-Api-Key, X-ModelTrack-App, X-ModelTrack-Team, X-ModelTrack-Feature, X-ModelTrack-Customer-Tier")
 		w.Header().Set("Access-Control-Max-Age", "86400")
 
 		// Handle preflight.

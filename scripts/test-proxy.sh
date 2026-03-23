@@ -1,5 +1,5 @@
 #!/bin/bash
-# Test script: sends sample requests through the CostTrack proxy
+# Test script: sends sample requests through the ModelTrack proxy
 # Usage: ANTHROPIC_API_KEY=sk-... ./scripts/test-proxy.sh
 
 set -e
@@ -12,7 +12,7 @@ fi
 PROXY_URL="${PROXY_URL:-http://localhost:8080}"
 API_KEY="${ANTHROPIC_API_KEY:?Set ANTHROPIC_API_KEY in .env or environment}"
 
-echo "=== CostTrack Proxy Test ==="
+echo "=== ModelTrack Proxy Test ==="
 echo "Proxy: $PROXY_URL"
 echo ""
 
@@ -27,9 +27,9 @@ curl -s "$PROXY_URL/v1/messages" \
   -H "Content-Type: application/json" \
   -H "x-api-key: $API_KEY" \
   -H "anthropic-version: 2023-06-01" \
-  -H "X-CostTrack-App: chatbot" \
-  -H "X-CostTrack-Team: product" \
-  -H "X-CostTrack-Feature: customer-support" \
+  -H "X-ModelTrack-App: chatbot" \
+  -H "X-ModelTrack-Team: product" \
+  -H "X-ModelTrack-Feature: customer-support" \
   -d '{
     "model": "claude-haiku-4-5",
     "max_tokens": 100,
@@ -46,9 +46,9 @@ curl -sN "$PROXY_URL/v1/messages" \
   -H "Content-Type: application/json" \
   -H "x-api-key: $API_KEY" \
   -H "anthropic-version: 2023-06-01" \
-  -H "X-CostTrack-App: summarizer" \
-  -H "X-CostTrack-Team: data-eng" \
-  -H "X-CostTrack-Feature: doc-summary" \
+  -H "X-ModelTrack-App: summarizer" \
+  -H "X-ModelTrack-Team: data-eng" \
+  -H "X-ModelTrack-Feature: doc-summary" \
   -d '{
     "model": "claude-haiku-4-5",
     "max_tokens": 150,
@@ -66,10 +66,10 @@ curl -s "$PROXY_URL/v1/messages" \
   -H "Content-Type: application/json" \
   -H "x-api-key: $API_KEY" \
   -H "anthropic-version: 2023-06-01" \
-  -H "X-CostTrack-App: search" \
-  -H "X-CostTrack-Team: platform" \
-  -H "X-CostTrack-Feature: semantic-search" \
-  -H "X-CostTrack-Customer-Tier: enterprise" \
+  -H "X-ModelTrack-App: search" \
+  -H "X-ModelTrack-Team: platform" \
+  -H "X-ModelTrack-Feature: semantic-search" \
+  -H "X-ModelTrack-Customer-Tier: enterprise" \
   -d '{
     "model": "claude-haiku-4-5",
     "max_tokens": 100,

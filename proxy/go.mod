@@ -1,4 +1,4 @@
-module github.com/costtrack/proxy
+module github.com/modeltrack/proxy
 
 go 1.22.0
 

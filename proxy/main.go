@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/costtrack/proxy/adapters"
-	"github.com/costtrack/proxy/middleware"
+	"github.com/modeltrack/proxy/adapters"
+	"github.com/modeltrack/proxy/middleware"
 )
 
 func main() {
@@ -86,7 +86,7 @@ func main() {
 	}
 
 	// Log startup info.
-	log.Printf("CostTrack Proxy starting")
+	log.Printf("ModelTrack Proxy starting")
 	log.Printf("  Port:           %d", cfg.Port)
 	log.Printf("  Data directory: %s", cfg.DataDir)
 	log.Printf("  Cost events:    %s", cfg.CostEventsFile)
@@ -140,5 +140,5 @@ func main() {
 
 	// Flush and close the event logger.
 	eventLogger.Close()
-	log.Printf("CostTrack Proxy stopped")
+	log.Printf("ModelTrack Proxy stopped")
 }

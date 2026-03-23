@@ -403,7 +403,7 @@ export async function sendTestMessage(): Promise<boolean> {
             type: "header",
             text: {
               type: "plain_text",
-              text: "CostTrack Slack Integration Test",
+              text: "ModelTrack Slack Integration Test",
               emoji: true,
             },
           },
@@ -411,7 +411,7 @@ export async function sendTestMessage(): Promise<boolean> {
             type: "section",
             text: {
               type: "mrkdwn",
-              text: "Your Slack webhook is configured correctly! CostTrack will send spend alerts, budget warnings, and daily summaries to this channel.",
+              text: "Your Slack webhook is configured correctly! ModelTrack will send spend alerts, budget warnings, and daily summaries to this channel.",
             },
           },
           {

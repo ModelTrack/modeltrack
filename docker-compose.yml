@@ -18,7 +18,7 @@ services:
     environment:
       - PORT=3001
       - DATA_DIR=/data
-      - DB_PATH=/data/costtrack.db
+      - DB_PATH=/data/modeltrack.db
     volumes:
       - ./data:/data
     depends_on:

@@ -135,7 +135,7 @@ export default function Sessions() {
             <div className="space-y-6">
               <h2 className="text-2xl font-semibold text-gray-100">Sessions</h2>
               <div className="flex items-center justify-center h-64 text-gray-500">
-                No sessions recorded yet. Send requests with the X-CostTrack-Session-ID header to start tracking sessions.
+                No sessions recorded yet. Send requests with the X-ModelTrack-Session-ID header to start tracking sessions.
               </div>
             </div>
           );

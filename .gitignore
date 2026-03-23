@@ -12,7 +12,7 @@ dashboard/node_modules/
 # Build artifacts
 api/dist/
 dashboard/dist/
-proxy/costtrack-proxy
+proxy/modeltrack-proxy
 
 # Environment
 .env

@@ -68,7 +68,7 @@ export default function Infrastructure() {
                 <p className="text-gray-300 text-lg mb-2">No infrastructure data yet</p>
                 <p className="text-gray-500 text-sm max-w-md mx-auto">
                   Infrastructure cost tracking is available for AWS services like SageMaker, EC2 GPU instances,
-                  and Bedrock. Enable the CostTrack infrastructure collector to start tracking these costs.
+                  and Bedrock. Enable the ModelTrack infrastructure collector to start tracking these costs.
                   Events with <code className="text-gray-400">event_type</code> of{' '}
                   <code className="text-gray-400">aws_infrastructure</code> or{' '}
                   <code className="text-gray-400">gpu_compute</code> will appear here.

@@ -1,4 +1,4 @@
-module github.com/costtrack/collector
+module github.com/modeltrack/collector
 
 go 1.22
 

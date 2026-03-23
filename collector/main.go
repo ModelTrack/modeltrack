@@ -21,7 +21,7 @@ func main() {
 
 	writer := NewEventWriter(cfg.CostEventsFile)
 
-	log.Printf("INFO: CostTrack Collector starting")
+	log.Printf("INFO: ModelTrack Collector starting")
 	log.Printf("INFO: data directory: %s", cfg.DataDir)
 	log.Printf("INFO: cost events file: %s", cfg.CostEventsFile)
 	log.Printf("INFO: collectors enabled — AWS Cost Explorer: %v, OpenCost: %v, GPU Metrics: %v",

@@ -1,18 +1,18 @@
 /**
- * Example: Using CostTrack with the Anthropic Node SDK.
+ * Example: Using ModelTrack with the Anthropic Node SDK.
  *
  * Before running:
- *   1. Start the CostTrack proxy:  cd proxy && go run .
+ *   1. Start the ModelTrack proxy:  cd proxy && go run .
  *   2. Set your API key:           export ANTHROPIC_API_KEY=sk-ant-...
- *   3. Set CostTrack metadata:     export COSTTRACK_TEAM=my-team
- *                                  export COSTTRACK_APP=my-app
+ *   3. Set ModelTrack metadata:     export MODELTRACK_TEAM=my-team
+ *                                  export MODELTRACK_APP=my-app
  *
  * Then run:
  *   npx ts-node example.ts
  */
 
 // This single import auto-patches the Anthropic SDK.
-import { configure, withSession } from "./costtrack";
+import { configure, withSession } from "./modeltrack";
 
 // Optional: configure programmatically instead of (or in addition to) env vars.
 configure({
@@ -27,11 +27,11 @@ async function main() {
   // Create the client as usual -- no baseURL change needed.
   const client = new Anthropic();
 
-  // Simple request -- automatically routed through CostTrack proxy.
+  // Simple request -- automatically routed through ModelTrack proxy.
   const response = await client.messages.create({
     model: "claude-haiku-4-5",
     max_tokens: 256,
-    messages: [{ role: "user", content: "What is CostTrack?" }],
+    messages: [{ role: "user", content: "What is ModelTrack?" }],
   });
 
   console.log("Response:", response.content[0]);
