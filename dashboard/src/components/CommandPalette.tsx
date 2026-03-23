@@ -1,50 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Command } from 'cmdk';
 import { AnimatePresence, motion } from 'framer-motion';
-
-type Page =
-  | 'overview'
-  | 'models'
-  | 'features'
-  | 'prompts'
-  | 'teams'
-  | 'sessions'
-  | 'reports'
-  | 'forecast'
-  | 'estimator'
-  | 'infrastructure'
-  | 'alerts';
+import { navGroups } from '../App';
+import type { Page } from '../App';
 
 interface CommandPaletteProps {
   onNavigate: (page: Page) => void;
 }
-
-const pages: { key: Page; label: string }[] = [
-  { key: 'overview', label: 'Overview' },
-  { key: 'models', label: 'Models' },
-  { key: 'features', label: 'Features' },
-  { key: 'prompts', label: 'Prompts' },
-  { key: 'teams', label: 'Teams' },
-  { key: 'sessions', label: 'Sessions' },
-  { key: 'reports', label: 'Reports' },
-  { key: 'forecast', label: 'Forecast' },
-  { key: 'estimator', label: 'Estimator' },
-  { key: 'infrastructure', label: 'Infrastructure' },
-  { key: 'alerts', label: 'Alerts' },
-];
-
-const quickActions = [
-  { label: 'Go to budgets', action: 'budgets' },
-  { label: 'View cache stats', action: 'cache' },
-  { label: 'Export report (CSV)', action: 'export' },
-];
-
-const timeRanges = [
-  { label: 'Last 7 days', value: '7d' },
-  { label: 'Last 30 days', value: '30d' },
-  { label: 'This month', value: 'month' },
-  { label: 'This quarter', value: 'quarter' },
-];
 
 export default function CommandPalette({ onNavigate }: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
@@ -64,6 +26,12 @@ export default function CommandPalette({ onNavigate }: CommandPaletteProps) {
     onNavigate(page);
     setOpen(false);
   }
+
+  const groupHeadingClass =
+    '[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-gray-500';
+
+  const itemClass =
+    'flex items-center gap-2 px-2 py-2 rounded-md text-sm text-gray-300 cursor-pointer data-[selected=true]:bg-gray-800 data-[selected=true]:text-gray-100';
 
   return (
     <AnimatePresence>
@@ -111,88 +79,29 @@ export default function CommandPalette({ onNavigate }: CommandPaletteProps) {
                   No results found
                 </Command.Empty>
 
-                <Command.Group
-                  heading="Pages"
-                  className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-gray-500"
-                >
-                  {pages.map((p) => (
-                    <Command.Item
-                      key={p.key}
-                      value={p.label}
-                      onSelect={() => selectPage(p.key)}
-                      className="flex items-center gap-2 px-2 py-2 rounded-md text-sm text-gray-300 cursor-pointer data-[selected=true]:bg-gray-800 data-[selected=true]:text-gray-100"
-                    >
-                      <svg
-                        className="w-4 h-4 text-gray-500 shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        strokeWidth="2"
-                      >
-                        <rect x="3" y="3" width="18" height="18" rx="2" />
-                      </svg>
-                      {p.label}
-                    </Command.Item>
-                  ))}
-                </Command.Group>
-
-                <Command.Group
-                  heading="Quick Actions"
-                  className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-gray-500"
-                >
-                  {quickActions.map((a) => (
-                    <Command.Item
-                      key={a.action}
-                      value={a.label}
-                      onSelect={() => setOpen(false)}
-                      className="flex items-center gap-2 px-2 py-2 rounded-md text-sm text-gray-300 cursor-pointer data-[selected=true]:bg-gray-800 data-[selected=true]:text-gray-100"
-                    >
-                      <svg
-                        className="w-4 h-4 text-gray-500 shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="13 17 18 12 13 7" />
-                        <polyline points="6 17 11 12 6 7" />
-                      </svg>
-                      {a.label}
-                    </Command.Item>
-                  ))}
-                </Command.Group>
-
-                <Command.Group
-                  heading="Time Ranges"
-                  className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-gray-500"
-                >
-                  {timeRanges.map((t) => (
-                    <Command.Item
-                      key={t.value}
-                      value={t.label}
-                      onSelect={() => setOpen(false)}
-                      className="flex items-center justify-between px-2 py-2 rounded-md text-sm text-gray-300 cursor-pointer data-[selected=true]:bg-gray-800 data-[selected=true]:text-gray-100"
-                    >
-                      <span className="flex items-center gap-2">
-                        <svg
-                          className="w-4 h-4 text-gray-500 shrink-0"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
+                {navGroups.map((group) => (
+                  <Command.Group
+                    key={group.label}
+                    heading={group.label}
+                    className={groupHeadingClass}
+                  >
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <Command.Item
+                          key={item.key}
+                          value={item.label}
+                          onSelect={() => selectPage(item.key)}
+                          className={itemClass}
                         >
-                          <circle cx="12" cy="12" r="10" />
-                          <polyline points="12 6 12 12 16 14" />
-                        </svg>
-                        {t.label}
-                      </span>
-                    </Command.Item>
-                  ))}
-                </Command.Group>
+                          <Icon size={16} className="text-gray-500 shrink-0" />
+                          {item.label}
+                        </Command.Item>
+                      );
+                    })}
+                  </Command.Group>
+                ))}
+
               </Command.List>
             </Command>
           </motion.div>

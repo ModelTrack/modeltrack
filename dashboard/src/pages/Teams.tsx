@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useApi } from '../hooks/useApi';
 import TeamBreakdown from '../components/TeamBreakdown';
 import SlideOver from '../components/SlideOver';
+import Card from '../components/Card';
+import PageWrapper from '../components/PageWrapper';
+import { SkeletonChart, SkeletonTable } from '../components/Skeleton';
 import type { TeamRow, SegmentSpend } from '../types';
 import { formatCurrency, formatNumber } from '../lib/format';
 import FilterPills, { type Filter } from '../components/FilterPills';
@@ -20,156 +23,156 @@ interface SegmentRow extends SegmentSpend {
 }
 
 export default function Teams() {
-  const { data: raw, loading, error } = useApi<ApiTeamRow[]>('/api/teams');
+  const { data: raw, loading, error, isFirstLoad } = useApi<ApiTeamRow[]>('/api/teams');
   const { data: segments } = useApi<SegmentRow[]>('/api/segments');
   const [selectedTeam, setSelectedTeam] = useState<ApiTeamRow | null>(null);
   const [filters, setFilters] = useState<Filter[]>([]);
 
-  if (loading && !raw) {
-    return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
-        Loading...
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64 text-red-400">
-        Error: {error}
-      </div>
-    );
-  }
-
-  if (!raw) return null;
-
-  // Map API shape to TeamRow for the chart component
-  const allTeams: TeamRow[] = raw.map((t) => ({
-    team: t.team,
-    total_cost: t.total_spend,
-    requests: t.request_count,
-  }));
-
-  // Client-side filtering
-  const teams = allTeams.filter((t) =>
-    filters.every((f) => {
-      const fieldLower = f.field.toLowerCase();
-      const valLower = f.value.toLowerCase();
-      if (fieldLower === 'team') return t.team.toLowerCase().includes(valLower);
-      return true;
-    }),
-  );
-
-  const filteredRaw = raw.filter((t) =>
-    filters.every((f) => {
-      const fieldLower = f.field.toLowerCase();
-      const valLower = f.value.toLowerCase();
-      if (fieldLower === 'team') return t.team.toLowerCase().includes(valLower);
-      return true;
-    }),
-  );
-
-  const maxTeamCost = filteredRaw.length > 0 ? Math.max(...filteredRaw.map((t) => t.total_spend)) : 1;
-
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-gray-100">Teams</h2>
-
-      <FilterPills filters={filters} onChange={setFilters} />
-
-      <TeamBreakdown data={teams} />
-
-      <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead>
-              <tr className="border-b border-gray-800 text-gray-400">
-                <th className="px-4 py-3 font-medium">Team</th>
-                <th className="px-4 py-3 font-medium">Requests</th>
-                <th className="px-4 py-3 font-medium">Apps</th>
-                <th className="px-4 py-3 font-medium">Total Cost</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRaw.map((team) => (
-                <tr
-                  key={team.team}
-                  className="border-b border-gray-800/50 hover:bg-gray-800/30 cursor-pointer"
-                  onClick={() => setSelectedTeam(team)}
-                >
-                  <td className="px-4 py-3 font-medium text-gray-100">
-                    {team.team}
-                  </td>
-                  <td className="px-4 py-3 text-gray-300 tabular-nums">
-                    {formatNumber(team.request_count)}
-                  </td>
-                  <td className="px-4 py-3 text-gray-300 tabular-nums">
-                    {Object.keys(team.by_app).length}
-                  </td>
-                  <td className="px-4 py-3 relative">
-                    <div
-                      className="absolute inset-y-0 left-0 bg-emerald-500/10"
-                      style={{ width: `${(team.total_spend / maxTeamCost) * 100}%` }}
-                    />
-                    <span className="relative text-emerald-400 tabular-nums">{formatCurrency(team.total_spend)}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <PageWrapper
+      data={raw}
+      loading={loading}
+      error={error}
+      isFirstLoad={isFirstLoad}
+      skeleton={
+        <div className="space-y-6">
+          <h2 className="text-2xl font-semibold text-gray-100">Teams</h2>
+          <SkeletonChart />
+          <SkeletonTable rows={5} columns={4} />
         </div>
-      </div>
+      }
+    >
+      {(data) => {
+        // Map API shape to TeamRow for the chart component
+        const allTeams: TeamRow[] = data.map((t) => ({
+          team: t.team,
+          total_cost: t.total_spend,
+          requests: t.request_count,
+        }));
 
-      {segments && segments.length > 0 && (
-        <>
-          <h3 className="text-xl font-semibold text-gray-100 mt-8">Spend by Customer Tier</h3>
+        // Client-side filtering
+        const teams = allTeams.filter((t) =>
+          filters.every((f) => {
+            const fieldLower = f.field.toLowerCase();
+            const valLower = f.value.toLowerCase();
+            if (fieldLower === 'team') return t.team.toLowerCase().includes(valLower);
+            return true;
+          }),
+        );
 
-          <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead>
-                  <tr className="border-b border-gray-800 text-gray-400">
-                    <th className="px-4 py-3 font-medium">Tier</th>
-                    <th className="px-4 py-3 font-medium">Requests</th>
-                    <th className="px-4 py-3 font-medium">Avg Cost/Req</th>
-                    <th className="px-4 py-3 font-medium">Total Cost</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {segments.map((seg) => (
-                    <tr
-                      key={seg.customer_tier}
-                      className="border-b border-gray-800/50 hover:bg-gray-800/30"
-                    >
-                      <td className="px-4 py-3 font-medium text-gray-100 capitalize">
-                        {seg.customer_tier}
-                      </td>
-                      <td className="px-4 py-3 text-gray-300 tabular-nums">
-                        {formatNumber(seg.request_count)}
-                      </td>
-                      <td className="px-4 py-3 text-gray-300 tabular-nums">
-                        {formatCurrency(seg.avg_cost_per_request)}
-                      </td>
-                      <td className="px-4 py-3 text-emerald-400 tabular-nums">
-                        {formatCurrency(seg.total_cost)}
-                      </td>
+        const filteredRaw = data.filter((t) =>
+          filters.every((f) => {
+            const fieldLower = f.field.toLowerCase();
+            const valLower = f.value.toLowerCase();
+            if (fieldLower === 'team') return t.team.toLowerCase().includes(valLower);
+            return true;
+          }),
+        );
+
+        const maxTeamCost = filteredRaw.length > 0 ? Math.max(...filteredRaw.map((t) => t.total_spend)) : 1;
+
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-semibold text-gray-100">Teams</h2>
+
+            <FilterPills filters={filters} onChange={setFilters} />
+
+            <TeamBreakdown data={teams} />
+
+            <Card className="overflow-hidden" padding="sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead>
+                    <tr className="border-b border-gray-800 text-gray-400">
+                      <th className="px-4 py-3 font-medium">Team</th>
+                      <th className="px-4 py-3 font-medium">Requests</th>
+                      <th className="px-4 py-3 font-medium">Apps</th>
+                      <th className="px-4 py-3 font-medium">Total Cost</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
+                  </thead>
+                  <tbody>
+                    {filteredRaw.map((team) => (
+                      <tr
+                        key={team.team}
+                        className="border-b border-gray-800/50 hover:bg-gray-800/30 cursor-pointer"
+                        onClick={() => setSelectedTeam(team)}
+                      >
+                        <td className="px-4 py-3 font-medium text-gray-100">
+                          {team.team}
+                        </td>
+                        <td className="px-4 py-3 text-gray-300 tabular-nums">
+                          {formatNumber(team.request_count)}
+                        </td>
+                        <td className="px-4 py-3 text-gray-300 tabular-nums">
+                          {Object.keys(team.by_app).length}
+                        </td>
+                        <td className="px-4 py-3 relative">
+                          <div
+                            className="absolute inset-y-0 left-0 bg-emerald-500/10"
+                            style={{ width: `${(team.total_spend / maxTeamCost) * 100}%` }}
+                          />
+                          <span className="relative text-emerald-400 tabular-nums">{formatCurrency(team.total_spend)}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
 
-      <SlideOver
-        open={selectedTeam !== null}
-        onClose={() => setSelectedTeam(null)}
-        title={selectedTeam?.team ?? ''}
-      >
-        {selectedTeam && <TeamDetail team={selectedTeam} />}
-      </SlideOver>
-    </div>
+            {segments && segments.length > 0 && (
+              <>
+                <h3 className="text-xl font-semibold text-gray-100 mt-8">Spend by Customer Tier</h3>
+
+                <Card className="overflow-hidden" padding="sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead>
+                        <tr className="border-b border-gray-800 text-gray-400">
+                          <th className="px-4 py-3 font-medium">Tier</th>
+                          <th className="px-4 py-3 font-medium">Requests</th>
+                          <th className="px-4 py-3 font-medium">Avg Cost/Req</th>
+                          <th className="px-4 py-3 font-medium">Total Cost</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {segments.map((seg) => (
+                          <tr
+                            key={seg.customer_tier}
+                            className="border-b border-gray-800/50 hover:bg-gray-800/30"
+                          >
+                            <td className="px-4 py-3 font-medium text-gray-100 capitalize">
+                              {seg.customer_tier}
+                            </td>
+                            <td className="px-4 py-3 text-gray-300 tabular-nums">
+                              {formatNumber(seg.request_count)}
+                            </td>
+                            <td className="px-4 py-3 text-gray-300 tabular-nums">
+                              {formatCurrency(seg.avg_cost_per_request)}
+                            </td>
+                            <td className="px-4 py-3 text-emerald-400 tabular-nums">
+                              {formatCurrency(seg.total_cost)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              </>
+            )}
+
+            <SlideOver
+              open={selectedTeam !== null}
+              onClose={() => setSelectedTeam(null)}
+              title={selectedTeam?.team ?? ''}
+            >
+              {selectedTeam && <TeamDetail team={selectedTeam} />}
+            </SlideOver>
+          </div>
+        );
+      }}
+    </PageWrapper>
   );
 }
 

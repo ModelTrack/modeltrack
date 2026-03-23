@@ -1,5 +1,6 @@
-import { useState } from 'react';
 import { formatCurrency, formatNumber, formatTokens } from '../lib/format';
+import { useSort } from '../hooks/useSort';
+import Card from './Card';
 import type { ModelRow } from '../types';
 
 type SortKey = keyof ModelRow;
@@ -10,30 +11,9 @@ interface ModelTableProps {
 }
 
 export default function ModelTable({ data, onRowClick }: ModelTableProps) {
-  const [sortKey, setSortKey] = useState<SortKey>('total_cost');
-  const [sortAsc, setSortAsc] = useState(false);
+  const { sorted, handleSort, indicator } = useSort(data, 'total_cost' as keyof ModelRow);
 
   const maxCost = data.length > 0 ? Math.max(...data.map((d) => d.total_cost)) : 1;
-
-  const sorted = [...data].sort((a, b) => {
-    const aVal = a[sortKey];
-    const bVal = b[sortKey];
-    if (typeof aVal === 'string' && typeof bVal === 'string') {
-      return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-    }
-    return sortAsc
-      ? (aVal as number) - (bVal as number)
-      : (bVal as number) - (aVal as number);
-  });
-
-  function handleSort(key: SortKey) {
-    if (key === sortKey) {
-      setSortAsc(!sortAsc);
-    } else {
-      setSortKey(key);
-      setSortAsc(false);
-    }
-  }
 
   const columns: { key: SortKey; label: string }[] = [
     { key: 'model', label: 'Model' },
@@ -44,13 +24,8 @@ export default function ModelTable({ data, onRowClick }: ModelTableProps) {
     { key: 'avg_cost_per_request', label: 'Avg Cost/Req' },
   ];
 
-  const indicator = (key: SortKey) => {
-    if (key !== sortKey) return '';
-    return sortAsc ? ' \u2191' : ' \u2193';
-  };
-
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+    <Card className="overflow-hidden" padding="sm">
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
           <thead>
@@ -103,6 +78,6 @@ export default function ModelTable({ data, onRowClick }: ModelTableProps) {
           </tbody>
         </table>
       </div>
-    </div>
+    </Card>
   );
 }

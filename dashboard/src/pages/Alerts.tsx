@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useApi } from '../hooks/useApi';
 import AlertsList from '../components/AlertsList';
+import Card from '../components/Card';
+import PageWrapper from '../components/PageWrapper';
+import { SkeletonTable } from '../components/Skeleton';
 import type { Alert } from '../types';
 
 interface ApiAlert {
@@ -15,7 +18,7 @@ interface ApiAlert {
 }
 
 export default function Alerts() {
-  const { data: raw, loading, error } = useApi<ApiAlert[]>('/api/alerts');
+  const { data: raw, loading, error, isFirstLoad } = useApi<ApiAlert[]>('/api/alerts');
 
   const [team, setTeam] = useState('');
   const [app, setApp] = useState('');
@@ -56,98 +59,99 @@ export default function Alerts() {
     }
   }
 
-  if (loading && !raw) {
-    return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
-        Loading...
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64 text-red-400">
-        Error: {error}
-      </div>
-    );
-  }
-
-  // Map API alerts to the Alert interface expected by AlertsList
-  const alerts: Alert[] = (raw ?? []).map((a) => ({
-    id: a.id,
-    severity: a.hourly_spend > 3 * a.avg_spend ? 'critical' as const : 'warning' as const,
-    description: a.message,
-    timestamp: a.created_at,
-    amount: a.hourly_spend,
-  }));
-
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-gray-100">Alerts</h2>
+    <PageWrapper
+      data={raw}
+      loading={loading}
+      error={error}
+      isFirstLoad={isFirstLoad}
+      skeleton={
+        <div className="space-y-6">
+          <h2 className="text-2xl font-semibold text-gray-100">Alerts</h2>
+          <SkeletonTable rows={5} columns={4} />
+        </div>
+      }
+    >
+      {(data) => {
+        // Map API alerts to the Alert interface expected by AlertsList
+        const alerts: Alert[] = data.map((a) => ({
+          id: a.id,
+          severity: a.hourly_spend > 3 * a.avg_spend ? 'critical' as const : 'warning' as const,
+          description: a.message,
+          timestamp: a.created_at,
+          amount: a.hourly_spend,
+        }));
 
-      <AlertsList alerts={alerts} />
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-semibold text-gray-100">Alerts</h2>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
-        <h3 className="text-lg font-medium text-gray-100 mb-4">
-          Set Budget Threshold
-        </h3>
-        <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">Team</label>
-            <input
-              type="text"
-              value={team}
-              onChange={(e) => setTeam(e.target.value)}
-              required
-              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-              placeholder="e.g. ml-platform"
-            />
+            <AlertsList alerts={alerts} />
+
+            <Card>
+              <h3 className="text-lg font-medium text-gray-100 mb-4">
+                Set Budget Threshold
+              </h3>
+              <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Team</label>
+                  <input
+                    type="text"
+                    value={team}
+                    onChange={(e) => setTeam(e.target.value)}
+                    required
+                    className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="e.g. ml-platform"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">
+                    App (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={app}
+                    onChange={(e) => setApp(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="e.g. chatbot-v2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">
+                    Monthly Budget ($)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={budget}
+                    onChange={(e) => setBudget(e.target.value)}
+                    required
+                    className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="5000.00"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-medium rounded-md px-4 py-2 transition-colors"
+                >
+                  {submitting ? 'Saving...' : 'Set Budget'}
+                </button>
+                {submitMsg && (
+                  <p
+                    className={`text-sm ${
+                      submitMsg.startsWith('Failed') ? 'text-red-400' : 'text-emerald-400'
+                    }`}
+                  >
+                    {submitMsg}
+                  </p>
+                )}
+              </form>
+            </Card>
           </div>
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">
-              App (optional)
-            </label>
-            <input
-              type="text"
-              value={app}
-              onChange={(e) => setApp(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-              placeholder="e.g. chatbot-v2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">
-              Monthly Budget ($)
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-              required
-              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-              placeholder="5000.00"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-medium rounded-md px-4 py-2 transition-colors"
-          >
-            {submitting ? 'Saving...' : 'Set Budget'}
-          </button>
-          {submitMsg && (
-            <p
-              className={`text-sm ${
-                submitMsg.startsWith('Failed') ? 'text-red-400' : 'text-emerald-400'
-              }`}
-            >
-              {submitMsg}
-            </p>
-          )}
-        </form>
-      </div>
-    </div>
+        );
+      }}
+    </PageWrapper>
   );
 }

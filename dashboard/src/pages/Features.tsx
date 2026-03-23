@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -9,58 +8,48 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useApi } from '../hooks/useApi';
+import { useSort } from '../hooks/useSort';
+import Card from '../components/Card';
+import PageWrapper from '../components/PageWrapper';
+import { SkeletonChart, SkeletonTable } from '../components/Skeleton';
 import type { FeatureUsage } from '../types';
 import { formatCurrency, formatNumber, formatTokens } from '../lib/format';
 import { chartTooltipStyle } from '../lib/chartTheme';
+import { colors } from '../lib/colors';
 
 type SortKey = keyof FeatureUsage;
 
 export default function Features() {
-  const { data: features, loading, error } = useApi<FeatureUsage[]>('/api/features');
-  const [sortKey, setSortKey] = useState<SortKey>('total_cost');
-  const [sortAsc, setSortAsc] = useState(false);
+  const { data: features, loading, error, isFirstLoad } = useApi<FeatureUsage[]>('/api/features');
 
-  if (loading && !features) {
-    return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
-        Loading...
-      </div>
-    );
-  }
+  return (
+    <PageWrapper
+      data={features}
+      loading={loading}
+      error={error}
+      isFirstLoad={isFirstLoad}
+      skeleton={
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-semibold text-gray-100">Features</h2>
+            <p className="text-sm text-gray-500 mt-1">Cost per AI feature</p>
+          </div>
+          <SkeletonChart />
+          <SkeletonTable rows={5} columns={7} />
+        </div>
+      }
+    >
+      {(data) => <FeaturesContent features={data} />}
+    </PageWrapper>
+  );
+}
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64 text-red-400">
-        Error: {error}
-      </div>
-    );
-  }
-
-  if (!features) return null;
+function FeaturesContent({ features }: { features: FeatureUsage[] }) {
+  const { sorted, handleSort, indicator } = useSort(features, 'total_cost' as keyof FeatureUsage);
 
   const chartData = [...features]
     .sort((a, b) => b.total_cost - a.total_cost)
     .slice(0, 10);
-
-  const sorted = [...features].sort((a, b) => {
-    const aVal = a[sortKey];
-    const bVal = b[sortKey];
-    if (typeof aVal === 'string' && typeof bVal === 'string') {
-      return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-    }
-    return sortAsc
-      ? (aVal as number) - (bVal as number)
-      : (bVal as number) - (aVal as number);
-  });
-
-  function handleSort(key: SortKey) {
-    if (key === sortKey) {
-      setSortAsc(!sortAsc);
-    } else {
-      setSortKey(key);
-      setSortAsc(false);
-    }
-  }
 
   const columns: { key: SortKey; label: string }[] = [
     { key: 'feature', label: 'Feature' },
@@ -72,11 +61,6 @@ export default function Features() {
     { key: 'primary_model', label: 'Primary Model' },
   ];
 
-  const indicator = (key: SortKey) => {
-    if (key !== sortKey) return '';
-    return sortAsc ? ' \u2191' : ' \u2193';
-  };
-
   return (
     <div className="space-y-6">
       <div>
@@ -84,24 +68,24 @@ export default function Features() {
         <p className="text-sm text-gray-500 mt-1">Cost per AI feature</p>
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
+      <Card>
         <h3 className="text-lg font-medium text-gray-100 mb-4">
           Top Features by Cost
         </h3>
         <ResponsiveContainer width="100%" height={350}>
           <BarChart data={chartData} layout="vertical">
-            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+            <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
             <XAxis
               type="number"
-              stroke="#6b7280"
-              tick={{ fill: '#9ca3af', fontSize: 12 }}
+              stroke={colors.axis}
+              tick={{ fill: colors.axisLabel, fontSize: 12 }}
               tickFormatter={(v) => formatCurrency(v)}
             />
             <YAxis
               type="category"
               dataKey="feature"
-              stroke="#6b7280"
-              tick={{ fill: '#9ca3af', fontSize: 12 }}
+              stroke={colors.axis}
+              tick={{ fill: colors.axisLabel, fontSize: 12 }}
               width={150}
             />
             <Tooltip
@@ -111,12 +95,12 @@ export default function Features() {
               itemStyle={chartTooltipStyle.itemStyle}
               formatter={(value: number) => [formatCurrency(value), 'Cost']}
             />
-            <Bar dataKey="total_cost" fill="#10b981" radius={[0, 4, 4, 0]} />
+            <Bar dataKey="total_cost" fill={colors.chart.primary} radius={[0, 4, 4, 0]} />
           </BarChart>
         </ResponsiveContainer>
-      </div>
+      </Card>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+      <Card className="overflow-hidden" padding="sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead>
@@ -165,7 +149,7 @@ export default function Features() {
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

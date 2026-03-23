@@ -1,53 +1,48 @@
-import { useState } from 'react';
 import { useApi } from '../hooks/useApi';
+import { useSort } from '../hooks/useSort';
+import Card from '../components/Card';
+import PageWrapper from '../components/PageWrapper';
+import { SkeletonCard, SkeletonTable } from '../components/Skeleton';
 import type { PromptAnalysis, PromptSummary } from '../types';
 import { formatCurrency, formatNumber, formatTokens } from '../lib/format';
 
 type SortKey = 'prompt_id' | 'request_count' | 'avg_system_tokens' | 'avg_user_tokens' | 'avg_output_tokens' | 'avg_cost_per_request' | 'total_cost';
 
 export default function Prompts() {
-  const { data: prompts, loading, error } = useApi<PromptAnalysis[]>('/api/prompts');
+  const { data: prompts, loading, error, isFirstLoad } = useApi<PromptAnalysis[]>('/api/prompts');
   const { data: summary } = useApi<PromptSummary>('/api/prompts/summary');
-  const [sortKey, setSortKey] = useState<SortKey>('total_cost');
-  const [sortAsc, setSortAsc] = useState(false);
 
-  if (loading && !prompts) {
-    return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
-        Loading...
-      </div>
-    );
-  }
+  return (
+    <PageWrapper
+      data={prompts}
+      loading={loading}
+      error={error}
+      isFirstLoad={isFirstLoad}
+      skeleton={
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-semibold text-gray-100">Prompt Analysis</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Identify expensive prompt patterns and optimization opportunities
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+          <SkeletonTable rows={5} columns={7} />
+        </div>
+      }
+    >
+      {(data) => <PromptsContent prompts={data} summary={summary} />}
+    </PageWrapper>
+  );
+}
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64 text-red-400">
-        Error: {error}
-      </div>
-    );
-  }
-
-  if (!prompts) return null;
-
-  const sorted = [...prompts].sort((a, b) => {
-    const aVal = a[sortKey];
-    const bVal = b[sortKey];
-    if (typeof aVal === 'string' && typeof bVal === 'string') {
-      return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-    }
-    return sortAsc
-      ? (aVal as number) - (bVal as number)
-      : (bVal as number) - (aVal as number);
-  });
-
-  function handleSort(key: SortKey) {
-    if (key === sortKey) {
-      setSortAsc(!sortAsc);
-    } else {
-      setSortKey(key);
-      setSortAsc(false);
-    }
-  }
+function PromptsContent({ prompts, summary }: { prompts: PromptAnalysis[]; summary: PromptSummary | null }) {
+  const { sorted, handleSort, indicator } = useSort(prompts, 'total_cost' as keyof PromptAnalysis);
 
   const columns: { key: SortKey; label: string }[] = [
     { key: 'prompt_id', label: 'Prompt ID' },
@@ -58,11 +53,6 @@ export default function Prompts() {
     { key: 'avg_cost_per_request', label: 'Avg Cost/Req' },
     { key: 'total_cost', label: 'Total Cost' },
   ];
-
-  const indicator = (key: SortKey) => {
-    if (key !== sortKey) return '';
-    return sortAsc ? ' \u2191' : ' \u2193';
-  };
 
   const promptsWithSuggestions = prompts.filter(
     (p) => p.optimization_suggestions.length > 0
@@ -79,13 +69,13 @@ export default function Prompts() {
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+        <Card padding="sm">
           <p className="text-xs text-gray-500 uppercase tracking-wide">Unique Prompts</p>
           <p className="text-2xl font-semibold text-gray-100 mt-1">
             {summary ? formatNumber(summary.total_unique_prompts) : '--'}
           </p>
-        </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+        </Card>
+        <Card padding="sm">
           <p className="text-xs text-gray-500 uppercase tracking-wide">Most Expensive</p>
           <p className="text-2xl font-semibold text-emerald-400 mt-1">
             {summary?.most_expensive_prompt
@@ -95,8 +85,8 @@ export default function Prompts() {
           <p className="text-xs text-gray-500 mt-0.5 truncate">
             {summary?.most_expensive_prompt?.id || ''}
           </p>
-        </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+        </Card>
+        <Card padding="sm">
           <p className="text-xs text-gray-500 uppercase tracking-wide">Longest System Prompt</p>
           <p className="text-2xl font-semibold text-gray-100 mt-1">
             {summary?.longest_system_prompt
@@ -106,8 +96,8 @@ export default function Prompts() {
           <p className="text-xs text-gray-500 mt-0.5 truncate">
             {summary?.longest_system_prompt?.id || ''}
           </p>
-        </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+        </Card>
+        <Card padding="sm">
           <p className="text-xs text-gray-500 uppercase tracking-wide">Most Cacheable</p>
           <p className="text-2xl font-semibold text-gray-100 mt-1">
             {summary?.most_cacheable
@@ -117,7 +107,7 @@ export default function Prompts() {
           <p className="text-xs text-gray-500 mt-0.5 truncate">
             {summary?.most_cacheable?.id || ''}
           </p>
-        </div>
+        </Card>
       </div>
 
       {/* Potential Savings */}
@@ -130,7 +120,7 @@ export default function Prompts() {
       )}
 
       {/* Table */}
-      <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+      <Card className="overflow-hidden" padding="sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead>
@@ -179,11 +169,11 @@ export default function Prompts() {
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
 
       {/* Optimization Suggestions */}
       {promptsWithSuggestions.length > 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
+        <Card>
           <h3 className="text-lg font-medium text-gray-100 mb-4">
             Optimization Suggestions
           </h3>
@@ -204,7 +194,7 @@ export default function Prompts() {
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

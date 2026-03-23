@@ -1,16 +1,18 @@
+import Card from './Card';
+
 export function SkeletonCard() {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg p-5 animate-pulse">
+    <Card className="animate-pulse">
       <div className="h-3 w-24 bg-gray-800 rounded mb-3" />
       <div className="h-7 w-32 bg-gray-800 rounded mb-2" />
       <div className="h-3 w-16 bg-gray-800 rounded" />
-    </div>
+    </Card>
   );
 }
 
 export function SkeletonChart() {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg p-5 animate-pulse">
+    <Card className="animate-pulse">
       <div className="h-5 w-48 bg-gray-800 rounded mb-4" />
       <div className="h-[300px] flex items-end gap-1 px-4">
         {Array.from({ length: 20 }).map((_, i) => (
@@ -18,12 +20,12 @@ export function SkeletonChart() {
             key={i}
             className="flex-1 bg-gray-800 rounded-t"
             style={{
-              height: `${30 + Math.sin(i * 0.5) * 25 + Math.random() * 20}%`,
+              height: `${30 + Math.sin(i * 0.7) * 25 + ((i * 13) % 20)}%`,
             }}
           />
         ))}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -53,7 +55,7 @@ interface SkeletonTableProps {
 
 export function SkeletonTable({ rows = 5, columns = 4 }: SkeletonTableProps) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden animate-pulse">
+    <Card className="overflow-hidden animate-pulse" padding="sm">
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
           <thead>
@@ -84,6 +86,6 @@ export function SkeletonTable({ rows = 5, columns = 4 }: SkeletonTableProps) {
           </tbody>
         </table>
       </div>
-    </div>
+    </Card>
   );
 }

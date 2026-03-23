@@ -1,7 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import * as RadixTooltip from '@radix-ui/react-tooltip';
-import { AnimatePresence, motion } from 'framer-motion';
+import {
+  LayoutDashboard,
+  Cpu,
+  Layers,
+  MessageSquare,
+  Users,
+  Activity,
+  TrendingUp,
+  Calculator,
+  FileText,
+  Bell,
+  Server,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import Overview from './pages/Overview';
+import ErrorBoundary from './components/ErrorBoundary';
 import Models from './pages/Models';
 import Features from './pages/Features';
 import Prompts from './pages/Prompts';
@@ -27,19 +41,47 @@ export type Page =
   | 'estimator'
   | 'infrastructure';
 
-const navItems: { key: Page; label: string }[] = [
-  { key: 'overview', label: 'Overview' },
-  { key: 'models', label: 'Models' },
-  { key: 'features', label: 'Features' },
-  { key: 'prompts', label: 'Prompts' },
-  { key: 'teams', label: 'Teams' },
-  { key: 'sessions', label: 'Sessions' },
-  { key: 'reports', label: 'Reports' },
-  { key: 'forecast', label: 'Forecast' },
-  { key: 'alerts', label: 'Alerts' },
-  { key: 'estimator', label: 'Estimator' },
-  { key: 'infrastructure', label: 'Infrastructure' },
+export interface NavItem {
+  key: Page;
+  label: string;
+  icon: LucideIcon;
+}
+
+export interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+export const navGroups: NavGroup[] = [
+  {
+    label: 'Monitor',
+    items: [
+      { key: 'overview', label: 'Overview', icon: LayoutDashboard },
+      { key: 'models', label: 'Models', icon: Cpu },
+      { key: 'features', label: 'Features', icon: Layers },
+      { key: 'prompts', label: 'Prompts', icon: MessageSquare },
+      { key: 'teams', label: 'Teams', icon: Users },
+      { key: 'sessions', label: 'Sessions', icon: Activity },
+    ],
+  },
+  {
+    label: 'Plan',
+    items: [
+      { key: 'forecast', label: 'Forecast', icon: TrendingUp },
+      { key: 'estimator', label: 'Estimator', icon: Calculator },
+      { key: 'reports', label: 'Reports', icon: FileText },
+    ],
+  },
+  {
+    label: 'Manage',
+    items: [
+      { key: 'alerts', label: 'Alerts', icon: Bell },
+      { key: 'infrastructure', label: 'Infrastructure', icon: Server },
+    ],
+  },
 ];
+
+const allNavItems = navGroups.flatMap((g) => g.items);
 
 function PageContent({ page, setPage }: { page: Page; setPage: (p: Page) => void }) {
   switch (page) {
@@ -71,6 +113,10 @@ function PageContent({ page, setPage }: { page: Page; setPage: (p: Page) => void
 export default function App() {
   const [page, setPage] = useState<Page>('overview');
 
+  useEffect(() => {
+    document.title = `CostTrack - ${allNavItems.find((item) => item.key === page)?.label || 'Dashboard'}`;
+  }, [page]);
+
   return (
     <RadixTooltip.Provider delayDuration={200}>
       <div className="flex h-screen bg-gray-950 text-gray-100">
@@ -82,19 +128,38 @@ export default function App() {
             </h1>
             <p className="text-xs text-gray-500 mt-0.5">AI FinOps Platform</p>
           </div>
-          <nav className="flex-1 px-3 py-4 space-y-1">
-            {navItems.map((item) => (
-              <button
-                key={item.key}
-                onClick={() => setPage(item.key)}
-                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-all duration-150 ${
-                  page === item.key
-                    ? 'bg-gray-800 text-gray-100 border-l-2 border-emerald-400 shadow-[inset_0_0_12px_rgba(16,185,129,0.06)]'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-900 hover:translate-x-0.5 border-l-2 border-transparent'
-                }`}
-              >
-                {item.label}
-              </button>
+          <nav className="flex-1 px-3 py-4">
+            {navGroups.map((group, gi) => (
+              <div key={group.label} className={gi > 0 ? 'mt-6' : ''}>
+                <p className="px-3 mb-2 text-[11px] uppercase tracking-wider text-gray-500 font-medium">
+                  {group.label}
+                </p>
+                <div className="space-y-1">
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = page === item.key;
+                    return (
+                      <button
+                        key={item.key}
+                        onClick={() => setPage(item.key)}
+                        className={`group w-full text-left px-3 py-2 rounded-md text-sm transition-all duration-150 flex items-center gap-2.5 ${
+                          isActive
+                            ? 'bg-gray-800 text-gray-100 border-l-2 border-emerald-400 shadow-[inset_0_0_12px_rgba(16,185,129,0.06)]'
+                            : 'text-gray-400 hover:text-gray-200 hover:bg-gray-900 hover:translate-x-0.5 border-l-2 border-transparent'
+                        }`}
+                      >
+                        <Icon
+                          size={16}
+                          className={`shrink-0 transition-colors duration-150 ${
+                            isActive ? 'text-emerald-400' : 'text-gray-500 group-hover:text-gray-300'
+                          }`}
+                        />
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             ))}
           </nav>
           <div className="px-5 py-3 border-t border-gray-800">
@@ -107,17 +172,11 @@ export default function App() {
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto p-8">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={page}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            >
+          <div key={page} className="animate-fade-in">
+            <ErrorBoundary key={page}>
               <PageContent page={page} setPage={setPage} />
-            </motion.div>
-          </AnimatePresence>
+            </ErrorBoundary>
+          </div>
         </main>
 
         <CommandPalette onNavigate={setPage} />

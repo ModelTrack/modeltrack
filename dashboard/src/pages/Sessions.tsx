@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useApi } from '../hooks/useApi';
+import Card from '../components/Card';
+import PageWrapper from '../components/PageWrapper';
+import { SkeletonTable } from '../components/Skeleton';
 import type { SessionCost } from '../types';
-import { formatCurrency, formatNumber, formatRelativeTime } from '../lib/format';
+import { formatCurrency, formatNumber } from '../lib/format';
 
 interface SessionEvent {
   event_id: string;
@@ -110,94 +113,93 @@ function SessionDetailView({ sessionId }: { sessionId: string }) {
 }
 
 export default function Sessions() {
-  const { data: sessions, loading, error } = useApi<SessionCost[]>('/api/sessions');
+  const { data: sessions, loading, error, isFirstLoad } = useApi<SessionCost[]>('/api/sessions');
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
 
-  if (loading && !sessions) {
-    return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
-        Loading...
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64 text-red-400">
-        Error: {error}
-      </div>
-    );
-  }
-
-  if (!sessions || sessions.length === 0) {
-    return (
-      <div className="space-y-6">
-        <h2 className="text-2xl font-semibold text-gray-100">Sessions</h2>
-        <div className="flex items-center justify-center h-64 text-gray-500">
-          No sessions recorded yet. Send requests with the X-CostTrack-Session-ID header to start tracking sessions.
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-gray-100">Sessions</h2>
-
-      <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead>
-              <tr className="border-b border-gray-800 text-gray-400">
-                <th className="px-4 py-3 font-medium">Session ID</th>
-                <th className="px-4 py-3 font-medium">Team</th>
-                <th className="px-4 py-3 font-medium">App</th>
-                <th className="px-4 py-3 font-medium">Requests</th>
-                <th className="px-4 py-3 font-medium">Models Used</th>
-                <th className="px-4 py-3 font-medium">Duration</th>
-                <th className="px-4 py-3 font-medium">Total Cost</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sessions.map((session) => (
-                <>
-                  <tr
-                    key={session.session_id}
-                    onClick={() =>
-                      setExpandedSession(
-                        expandedSession === session.session_id ? null : session.session_id
-                      )
-                    }
-                    className="border-b border-gray-800/50 hover:bg-gray-800/30 cursor-pointer"
-                  >
-                    <td className="px-4 py-3 font-mono text-gray-300" title={session.session_id}>
-                      {truncateId(session.session_id)}
-                    </td>
-                    <td className="px-4 py-3 text-gray-300">{session.team || '-'}</td>
-                    <td className="px-4 py-3 text-gray-300">{session.app_id || '-'}</td>
-                    <td className="px-4 py-3 text-gray-300">{formatNumber(session.request_count)}</td>
-                    <td className="px-4 py-3 text-gray-400 text-xs">
-                      {session.models.split(',').join(', ')}
-                    </td>
-                    <td className="px-4 py-3 text-gray-300">
-                      {formatDuration(session.duration_seconds)}
-                    </td>
-                    <td className="px-4 py-3 text-emerald-400">
-                      {formatCurrency(session.total_cost)}
-                    </td>
-                  </tr>
-                  {expandedSession === session.session_id && (
-                    <SessionDetailView
-                      key={`detail-${session.session_id}`}
-                      sessionId={session.session_id}
-                    />
-                  )}
-                </>
-              ))}
-            </tbody>
-          </table>
+    <PageWrapper
+      data={sessions}
+      loading={loading}
+      error={error}
+      isFirstLoad={isFirstLoad}
+      skeleton={
+        <div className="space-y-6">
+          <h2 className="text-2xl font-semibold text-gray-100">Sessions</h2>
+          <SkeletonTable rows={5} columns={7} />
         </div>
-      </div>
-    </div>
+      }
+    >
+      {(data) => {
+        if (data.length === 0) {
+          return (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-semibold text-gray-100">Sessions</h2>
+              <div className="flex items-center justify-center h-64 text-gray-500">
+                No sessions recorded yet. Send requests with the X-CostTrack-Session-ID header to start tracking sessions.
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-semibold text-gray-100">Sessions</h2>
+
+            <Card className="overflow-hidden" padding="sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead>
+                    <tr className="border-b border-gray-800 text-gray-400">
+                      <th className="px-4 py-3 font-medium">Session ID</th>
+                      <th className="px-4 py-3 font-medium">Team</th>
+                      <th className="px-4 py-3 font-medium">App</th>
+                      <th className="px-4 py-3 font-medium">Requests</th>
+                      <th className="px-4 py-3 font-medium">Models Used</th>
+                      <th className="px-4 py-3 font-medium">Duration</th>
+                      <th className="px-4 py-3 font-medium">Total Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.map((session) => (
+                      <React.Fragment key={session.session_id}>
+                        <tr
+                          onClick={() =>
+                            setExpandedSession(
+                              expandedSession === session.session_id ? null : session.session_id
+                            )
+                          }
+                          className="border-b border-gray-800/50 hover:bg-gray-800/30 cursor-pointer"
+                        >
+                          <td className="px-4 py-3 font-mono text-gray-300" title={session.session_id}>
+                            {truncateId(session.session_id)}
+                          </td>
+                          <td className="px-4 py-3 text-gray-300">{session.team || '-'}</td>
+                          <td className="px-4 py-3 text-gray-300">{session.app_id || '-'}</td>
+                          <td className="px-4 py-3 text-gray-300">{formatNumber(session.request_count)}</td>
+                          <td className="px-4 py-3 text-gray-400 text-xs">
+                            {session.models.split(',').join(', ')}
+                          </td>
+                          <td className="px-4 py-3 text-gray-300">
+                            {formatDuration(session.duration_seconds)}
+                          </td>
+                          <td className="px-4 py-3 text-emerald-400">
+                            {formatCurrency(session.total_cost)}
+                          </td>
+                        </tr>
+                        {expandedSession === session.session_id && (
+                          <SessionDetailView
+                            sessionId={session.session_id}
+                          />
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </div>
+        );
+      }}
+    </PageWrapper>
   );
 }

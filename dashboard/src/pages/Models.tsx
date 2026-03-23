@@ -11,9 +11,13 @@ import {
 import { useApi } from '../hooks/useApi';
 import ModelTable from '../components/ModelTable';
 import SlideOver from '../components/SlideOver';
+import Card from '../components/Card';
+import PageWrapper from '../components/PageWrapper';
+import { SkeletonChart, SkeletonTable } from '../components/Skeleton';
 import type { ModelRow } from '../types';
 import { formatCurrency, formatNumber, formatTokens } from '../lib/format';
 import { chartTooltipStyle } from '../lib/chartTheme';
+import { colors } from '../lib/colors';
 import FilterPills, { type Filter } from '../components/FilterPills';
 
 interface ApiModelRow {
@@ -28,100 +32,100 @@ interface ApiModelRow {
 }
 
 export default function Models() {
-  const { data: raw, loading, error } = useApi<ApiModelRow[]>('/api/models');
+  const { data: raw, loading, error, isFirstLoad } = useApi<ApiModelRow[]>('/api/models');
   const [selectedModel, setSelectedModel] = useState<ModelRow | null>(null);
   const [filters, setFilters] = useState<Filter[]>([]);
 
-  if (loading && !raw) {
-    return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
-        Loading...
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64 text-red-400">
-        Error: {error}
-      </div>
-    );
-  }
-
-  if (!raw) return null;
-
-  // Map API shape to ModelRow
-  const allModels: ModelRow[] = raw.map((r) => ({
-    model: r.model,
-    requests: r.request_count,
-    input_tokens: r.total_input_tokens,
-    output_tokens: r.total_output_tokens,
-    total_cost: r.total_spend,
-    avg_cost_per_request: r.avg_cost_per_request,
-  }));
-
-  // Client-side filtering
-  const models = allModels.filter((m) =>
-    filters.every((f) => {
-      const fieldLower = f.field.toLowerCase();
-      const valLower = f.value.toLowerCase();
-      if (fieldLower === 'model') return m.model.toLowerCase().includes(valLower);
-      return true;
-    }),
-  );
-
-  const chartData = [...models]
-    .sort((a, b) => b.total_cost - a.total_cost)
-    .slice(0, 10);
-
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-gray-100">Models</h2>
+    <PageWrapper
+      data={raw}
+      loading={loading}
+      error={error}
+      isFirstLoad={isFirstLoad}
+      skeleton={
+        <div className="space-y-6">
+          <h2 className="text-2xl font-semibold text-gray-100">Models</h2>
+          <SkeletonChart />
+          <SkeletonTable rows={5} columns={6} />
+        </div>
+      }
+    >
+      {(data) => {
+        // Map API shape to ModelRow
+        const allModels: ModelRow[] = data.map((r) => ({
+          model: r.model,
+          requests: r.request_count,
+          input_tokens: r.total_input_tokens,
+          output_tokens: r.total_output_tokens,
+          total_cost: r.total_spend,
+          avg_cost_per_request: r.avg_cost_per_request,
+        }));
 
-      <FilterPills filters={filters} onChange={setFilters} />
+        // Client-side filtering
+        const models = allModels.filter((m) =>
+          filters.every((f) => {
+            const fieldLower = f.field.toLowerCase();
+            const valLower = f.value.toLowerCase();
+            if (fieldLower === 'model') return m.model.toLowerCase().includes(valLower);
+            return true;
+          }),
+        );
 
-      <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
-        <h3 className="text-lg font-medium text-gray-100 mb-4">
-          Cost Distribution by Model
-        </h3>
-        <ResponsiveContainer width="100%" height={350}>
-          <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-            <XAxis
-              dataKey="model"
-              stroke="#6b7280"
-              tick={{ fill: '#9ca3af', fontSize: 12 }}
-              angle={-20}
-              textAnchor="end"
-              height={60}
-            />
-            <YAxis
-              stroke="#6b7280"
-              tick={{ fill: '#9ca3af', fontSize: 12 }}
-              tickFormatter={(v) => formatCurrency(v)}
-            />
-            <Tooltip
-              cursor={false}
-              contentStyle={chartTooltipStyle.contentStyle}
-              labelStyle={chartTooltipStyle.labelStyle}
-              itemStyle={chartTooltipStyle.itemStyle}
-              formatter={(value: number) => [formatCurrency(value), 'Cost']}
-            />
-            <Bar dataKey="total_cost" fill="#10b981" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+        const chartData = [...models]
+          .sort((a, b) => b.total_cost - a.total_cost)
+          .slice(0, 10);
 
-      <ModelTable data={models} onRowClick={(row) => setSelectedModel(row)} />
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-semibold text-gray-100">Models</h2>
 
-      <SlideOver
-        open={selectedModel !== null}
-        onClose={() => setSelectedModel(null)}
-        title={selectedModel?.model ?? ''}
-      >
-        {selectedModel && <ModelDetail model={selectedModel} />}
-      </SlideOver>
-    </div>
+            <FilterPills filters={filters} onChange={setFilters} />
+
+            <Card>
+              <h3 className="text-lg font-medium text-gray-100 mb-4">
+                Cost Distribution by Model
+              </h3>
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
+                  <XAxis
+                    dataKey="model"
+                    stroke={colors.axis}
+                    tick={{ fill: colors.axisLabel, fontSize: 12 }}
+                    angle={-20}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis
+                    stroke={colors.axis}
+                    tick={{ fill: colors.axisLabel, fontSize: 12 }}
+                    tickFormatter={(v) => formatCurrency(v)}
+                  />
+                  <Tooltip
+                    cursor={false}
+                    contentStyle={chartTooltipStyle.contentStyle}
+                    labelStyle={chartTooltipStyle.labelStyle}
+                    itemStyle={chartTooltipStyle.itemStyle}
+                    formatter={(value: number) => [formatCurrency(value), 'Cost']}
+                  />
+                  <Bar dataKey="total_cost" fill={colors.chart.primary} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
+
+            <ModelTable data={models} onRowClick={(row) => setSelectedModel(row)} />
+
+            <SlideOver
+              open={selectedModel !== null}
+              onClose={() => setSelectedModel(null)}
+              title={selectedModel?.model ?? ''}
+            >
+              {selectedModel && <ModelDetail model={selectedModel} />}
+            </SlideOver>
+          </div>
+        );
+      }}
+    </PageWrapper>
   );
 }
 

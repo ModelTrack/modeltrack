@@ -1,4 +1,5 @@
 import { formatCurrency, formatRelativeTime } from '../lib/format';
+import Card from './Card';
 import type { Alert } from '../types';
 
 interface AlertsListProps {
@@ -7,7 +8,7 @@ interface AlertsListProps {
 
 export default function AlertsList({ alerts }: AlertsListProps) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+    <Card className="overflow-hidden" padding="sm">
       <div className="px-5 py-4 border-b border-gray-800">
         <h3 className="text-lg font-medium text-gray-100">Recent Alerts</h3>
       </div>
@@ -35,6 +36,6 @@ export default function AlertsList({ alerts }: AlertsListProps) {
           ))}
         </ul>
       )}
-    </div>
+    </Card>
   );
 }

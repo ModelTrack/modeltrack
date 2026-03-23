@@ -12,12 +12,20 @@ export function useApi<T>(url: string): {
   const [error, setError] = useState<string | null>(null);
   const hasFetchedOnce = useRef(false);
   const intervalRef = useRef<number | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchData = useCallback(async () => {
+    // Abort any in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: controller.signal });
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
@@ -30,9 +38,15 @@ export function useApi<T>(url: string): {
       }
       hasFetchedOnce.current = true;
     } catch (err) {
+      // Don't set error state for aborted requests
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   }, [url]);
 
@@ -44,6 +58,9 @@ export function useApi<T>(url: string): {
     return () => {
       if (intervalRef.current !== null) {
         window.clearInterval(intervalRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
   }, [fetchData]);

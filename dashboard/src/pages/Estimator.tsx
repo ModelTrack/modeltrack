@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useApi } from '../hooks/useApi';
+import Card from '../components/Card';
 import { formatCurrency } from '../lib/format';
 import type { ModelPricing, EstimatorResult } from '../types';
 
@@ -73,7 +74,7 @@ export default function Estimator() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Input Form */}
-        <div className="lg:col-span-1 bg-gray-900 border border-gray-800 rounded-lg p-5 space-y-4">
+        <Card className="lg:col-span-1 space-y-4">
           <h3 className="text-lg font-medium text-gray-100">Configuration</h3>
 
           <div>
@@ -160,7 +161,7 @@ export default function Estimator() {
           >
             {loading ? 'Calculating...' : 'Calculate'}
           </button>
-        </div>
+        </Card>
 
         {/* Results */}
         <div className="lg:col-span-2 space-y-6">
@@ -173,7 +174,7 @@ export default function Estimator() {
           {result && (
             <>
               {/* Primary Estimate */}
-              <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
+              <Card>
                 <h3 className="text-lg font-medium text-gray-100 mb-4">Estimated Cost</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <StatCard label="Per Request" value={formatCurrency(result.estimate.cost_per_request)} />
@@ -181,10 +182,10 @@ export default function Estimator() {
                   <StatCard label="Monthly" value={formatCurrency(result.estimate.monthly_cost)} large />
                   <StatCard label="Annual" value={formatCurrency(result.estimate.annual_cost)} large />
                 </div>
-              </div>
+              </Card>
 
               {/* With Caching */}
-              <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
+              <Card>
                 <h3 className="text-lg font-medium text-gray-100 mb-4">With Caching</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <StatCard label="Per Request" value={formatCurrency(result.with_caching.cost_per_request)} />
@@ -197,10 +198,10 @@ export default function Estimator() {
                     positive
                   />
                 </div>
-              </div>
+              </Card>
 
               {/* Model Comparison */}
-              <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
+              <Card>
                 <h3 className="text-lg font-medium text-gray-100 mb-4">Model Comparison</h3>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -258,11 +259,11 @@ export default function Estimator() {
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </Card>
 
               {/* Similar Features */}
               {result.similar_features.length > 0 && (
-                <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
+                <Card>
                   <h3 className="text-lg font-medium text-gray-100 mb-4">
                     Similar Existing Features
                   </h3>
@@ -294,7 +295,7 @@ export default function Estimator() {
                       </tbody>
                     </table>
                   </div>
-                </div>
+                </Card>
               )}
             </>
           )}
