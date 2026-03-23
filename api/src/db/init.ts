@@ -211,6 +211,21 @@ export function initDatabase(): Database.Database {
   `);
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS alerts (
+      id TEXT PRIMARY KEY,
+      type TEXT DEFAULT 'anomaly',
+      team TEXT NOT NULL,
+      hour TEXT NOT NULL,
+      message TEXT NOT NULL,
+      hourly_spend REAL DEFAULT 0,
+      avg_spend REAL DEFAULT 0,
+      dismissed_at TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(team, hour)
+    )
+  `);
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS budgets (
       id TEXT PRIMARY KEY,
       team TEXT DEFAULT '',
