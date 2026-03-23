@@ -37,6 +37,7 @@ export default function Alerts() {
   const [submitMsg, setSubmitMsg] = useState('');
   const [severityFilter, setSeverityFilter] = useState<'all' | 'critical' | 'warning'>('all');
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -77,10 +78,33 @@ export default function Alerts() {
 
   function dismissAlert(id: string) {
     setDismissedIds((prev) => new Set([...prev, id]));
+    setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+  }
+
+  function dismissSelected() {
+    setDismissedIds((prev) => new Set([...prev, ...selectedIds]));
+    setSelectedIds(new Set());
   }
 
   function clearAllDismissed() {
     setDismissedIds(new Set());
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll(alertIds: string[]) {
+    const allSelected = alertIds.every((id) => selectedIds.has(id));
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(alertIds));
+    }
   }
 
   return (
@@ -228,39 +252,76 @@ export default function Alerts() {
                   ))}
                 </div>
 
-                {/* Alert list with dismiss */}
+                {/* Bulk action bar */}
+                {selectedIds.size > 0 && (
+                  <div className="flex items-center gap-3 bg-gray-800 rounded-lg px-4 py-2.5">
+                    <span className="text-sm text-gray-300">{selectedIds.size} selected</span>
+                    <button
+                      onClick={dismissSelected}
+                      className="text-sm text-red-400 hover:text-red-300 font-medium transition-colors"
+                    >
+                      Dismiss selected
+                    </button>
+                    <button
+                      onClick={() => setSelectedIds(new Set())}
+                      className="text-sm text-gray-500 hover:text-gray-300 transition-colors ml-auto"
+                    >
+                      Clear selection
+                    </button>
+                  </div>
+                )}
+
+                {/* Alert list with checkboxes */}
                 <Card padding="sm" className="overflow-hidden">
                   {visibleAlerts.length === 0 ? (
                     <p className="px-4 py-8 text-center text-gray-500">
                       {dismissedIds.size > 0 ? 'All alerts dismissed' : 'No alerts'}
                     </p>
                   ) : (
-                    <ul className="divide-y divide-gray-800/50 max-h-[600px] overflow-y-auto">
-                      {visibleAlerts.slice(0, 50).map((alert) => (
-                        <li key={alert.id} className="px-4 py-3 flex items-start gap-3 group hover:bg-gray-800/30">
-                          <span
-                            className={`mt-1 w-2.5 h-2.5 rounded-full shrink-0 ${
-                              alert.severity === 'critical' ? 'bg-red-500' : 'bg-yellow-500'
-                            }`}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-gray-200">{alert.description}</p>
-                            <p className="text-xs text-gray-500 mt-1">{alert.timestamp}</p>
-                          </div>
-                          <div className="flex items-center gap-3 shrink-0">
-                            <span className="text-sm font-medium text-gray-300 tabular-nums">
-                              {formatCurrency(alert.amount)}
-                            </span>
-                            <button
-                              onClick={() => dismissAlert(alert.id)}
-                              className="text-gray-600 hover:text-gray-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              Dismiss
-                            </button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
+                    <>
+                      {/* Select all header */}
+                      <div className="px-4 py-2 border-b border-gray-800 flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={visibleAlerts.slice(0, 50).every((a) => selectedIds.has(a.id))}
+                          onChange={() => toggleSelectAll(visibleAlerts.slice(0, 50).map((a) => a.id))}
+                          className="w-3.5 h-3.5 rounded border-gray-600 bg-gray-800 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer"
+                        />
+                        <span className="text-xs text-gray-500">Select all</span>
+                      </div>
+                      <ul className="divide-y divide-gray-800/50 max-h-[600px] overflow-y-auto">
+                        {visibleAlerts.slice(0, 50).map((alert) => (
+                          <li key={alert.id} className="px-4 py-3 flex items-start gap-3 group hover:bg-gray-800/30">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(alert.id)}
+                              onChange={() => toggleSelect(alert.id)}
+                              className="mt-0.5 w-3.5 h-3.5 rounded border-gray-600 bg-gray-800 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer shrink-0"
+                            />
+                            <span
+                              className={`mt-1 w-2.5 h-2.5 rounded-full shrink-0 ${
+                                alert.severity === 'critical' ? 'bg-red-500' : 'bg-yellow-500'
+                              }`}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-gray-200">{alert.description}</p>
+                              <p className="text-xs text-gray-500 mt-1">{alert.timestamp}</p>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className="text-sm font-medium text-gray-300 tabular-nums">
+                                {formatCurrency(alert.amount)}
+                              </span>
+                              <button
+                                onClick={() => dismissAlert(alert.id)}
+                                className="text-gray-600 hover:text-gray-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                Dismiss
+                              </button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
                   )}
                 </Card>
               </div>
