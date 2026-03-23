@@ -152,16 +152,21 @@ router.get("/", (req: Request, res: Response) => {
       historicalDaily.push({ date: d, spend: dayMap.get(d) ?? 0 });
     }
 
-    // 2. Linear regression on daily spend
-    const regressionPoints = historicalDaily.map((h, idx) => ({
-      x: idx,
-      y: h.spend,
-    }));
-    const { slope, intercept, r2 } = linearRegression(regressionPoints);
-    const stddev = stddevResiduals(regressionPoints, slope, intercept);
+    // 2. Apply 7-day moving average to smooth weekday/weekend noise,
+    // then run linear regression on the smoothed daily data.
+    const smoothed = historicalDaily.map((h, idx) => {
+      const windowStart = Math.max(0, idx - 3);
+      const windowEnd = Math.min(historicalDaily.length, idx + 4);
+      const window = historicalDaily.slice(windowStart, windowEnd);
+      const avg = window.reduce((s, d) => s + d.spend, 0) / window.length;
+      return { x: idx, y: avg };
+    });
+
+    const { slope, intercept, r2 } = linearRegression(smoothed);
+    const stddev = stddevResiduals(smoothed, slope, intercept);
 
     // 3. Project forward
-    const startIdx = regressionPoints.length; // day index after last historical
+    const startIdx = smoothed.length; // day index after last historical (60)
     const forecastDaily: Array<{
       date: string;
       predicted: number;
@@ -194,16 +199,16 @@ router.get("/", (req: Request, res: Response) => {
       .slice(0, Math.min(90, horizonDays))
       .reduce((s, d) => s + d.predicted, 0);
 
-    // Growth rate: compare first 30 days vs last 30 days of the 60-day historical
-    const first30Spend = historicalDaily
-      .slice(0, 30)
-      .reduce((s, d) => s + d.spend, 0);
-    const growthRatePct =
-      first30Spend > 0
-        ? ((last30Spend - first30Spend) / first30Spend) * 100
-        : last30Spend > 0
-        ? 100
-        : 0;
+    // Growth rate: compare weeks 3-4 vs weeks 7-8 of the 60-day historical
+    // (skip week 1-2 to avoid ramp-up noise, use recent stable periods)
+    const earlyPeriod = historicalDaily.slice(14, 28).reduce((s, d) => s + d.spend, 0);
+    const latePeriod = historicalDaily.slice(46, 60).reduce((s, d) => s + d.spend, 0);
+    let growthRatePct = 0;
+    if (earlyPeriod > 0.01) {
+      growthRatePct = ((latePeriod - earlyPeriod) / earlyPeriod) * 100;
+    }
+    // Cap growth rate to reasonable bounds (-90% to +200%)
+    growthRatePct = Math.max(-90, Math.min(200, growthRatePct));
 
     const dataPointCount = rows.length;
     const confidence = confidenceLevel(r2, dataPointCount);
