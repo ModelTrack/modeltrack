@@ -226,7 +226,7 @@ export default function Home() {
           </div>
 
           <Link
-            href="https://github.com/ModelTrack/modeltrack#quick-start"
+            href="https://modeltrack-app-123375746913.us-central1.run.app/signup"
             className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-5 py-2 text-sm font-medium text-black hover:bg-emerald-400 transition-all duration-300 hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]"
           >
             Get Started
@@ -291,7 +291,7 @@ export default function Home() {
             {...stagger(3)}
             className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
           >
-            <Link href="https://github.com/ModelTrack/modeltrack#quick-start">
+            <Link href="https://modeltrack-app-123375746913.us-central1.run.app/signup">
               <ShimmerButton
                 shimmerColor="#34d399"
                 shimmerSize="0.05em"
@@ -707,7 +707,7 @@ export default function Home() {
                 </ul>
 
                 <Link
-                  href="https://github.com/ModelTrack/modeltrack#quick-start"
+                  href="https://modeltrack-app-123375746913.us-central1.run.app/signup"
                   className={`inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300 ${
                     plan.ctaStyle === "solid"
                       ? "bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(16,185,129,0.3)]"
@@ -756,7 +756,7 @@ export default function Home() {
             No credit card required. Free forever for small teams.
           </motion.p>
           <motion.div {...stagger(2)} className="mt-10">
-            <Link href="https://github.com/ModelTrack/modeltrack#quick-start">
+            <Link href="https://modeltrack-app-123375746913.us-central1.run.app/signup">
               <ShimmerButton
                 shimmerColor="#34d399"
                 shimmerSize="0.05em"
