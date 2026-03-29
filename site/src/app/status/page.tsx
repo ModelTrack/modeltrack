@@ -279,8 +279,47 @@ export default function StatusPage() {
       const res = await fetch("/api/status");
       if (res.ok) {
         const json = await res.json();
-        if (json) {
-          setData(json);
+        if (json && json.models && json.models.length > 0) {
+          // Transform flat models array into grouped providers
+          const grouped = new Map<string, ModelStatus[]>();
+          for (const m of json.models) {
+            const provider = m.provider || "unknown";
+            if (!grouped.has(provider)) grouped.set(provider, []);
+            const status: "operational" | "degraded" | "down" =
+              m.status === "ok" ? "operational" :
+              m.status === "error" ? "down" : "degraded";
+            grouped.get(provider)!.push({
+              name: m.displayName || m.model || m.id,
+              status,
+              latency: m.avg_latency_ms ?? m.latency_ms ?? null,
+              ttft: m.ttft_ms ?? null,
+              uptime24h: m.uptime_percent ?? null,
+              latencyHistory: [],
+            });
+          }
+
+          const providers: ProviderStatus[] = Array.from(grouped.entries()).map(
+            ([provider, models]) => {
+              const worstStatus = models.some((m) => m.status === "down")
+                ? "down" as const
+                : models.some((m) => m.status === "degraded")
+                ? "degraded" as const
+                : "operational" as const;
+              return { provider, status: worstStatus, models };
+            }
+          );
+
+          const overall = providers.some((p) => p.status === "down")
+            ? "down" as const
+            : providers.some((p) => p.status === "degraded")
+            ? "degraded" as const
+            : "operational" as const;
+
+          setData({
+            overall,
+            providers,
+            lastUpdated: new Date().toISOString(),
+          });
           setIsLive(true);
           return;
         }
