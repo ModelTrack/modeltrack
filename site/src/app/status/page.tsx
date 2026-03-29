@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
@@ -9,7 +9,16 @@ import {
   AlertTriangle,
   XCircle,
   RefreshCw,
+  ChevronDown,
 } from "lucide-react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -17,11 +26,32 @@ import {
 
 interface ModelStatus {
   name: string;
+  provider?: string;
   status: "operational" | "degraded" | "down";
   latency: number | null;
   ttft: number | null;
   uptime24h: number | null;
   latencyHistory: (number | null)[];
+}
+
+interface PingData {
+  latency_ms: number;
+  ttft_ms: number;
+  status: string;
+  tokens_per_second?: number;
+  created_at: { _seconds: number; _nanoseconds: number };
+}
+
+interface HistoryResponse {
+  pings: PingData[];
+}
+
+interface ChartPoint {
+  time: number;
+  timeLabel: string;
+  latency: number;
+  ttft: number;
+  tps: number | null;
 }
 
 interface ProviderStatus {
@@ -266,6 +296,183 @@ function UptimeTimeline({ modelName }: { modelName: string }) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Custom tooltip for the chart                                       */
+/* ------------------------------------------------------------------ */
+
+function ChartTooltip({ active, payload }: { active?: boolean; payload?: { payload: ChartPoint }[] }) {
+  if (!active || !payload || payload.length === 0) return null;
+  const d = payload[0].payload;
+  return (
+    <div className="rounded-lg bg-gray-900 border border-white/10 px-3 py-2 text-xs shadow-xl">
+      <p className="text-gray-400 mb-1">{d.timeLabel}</p>
+      <p className="text-white font-mono">Latency: <span className="text-emerald-400">{d.latency}ms</span></p>
+      <p className="text-white font-mono">TTFT: <span className="text-emerald-400">{d.ttft}ms</span></p>
+      {d.tps !== null && (
+        <p className="text-white font-mono">Tokens/s: <span className="text-emerald-400">{d.tps.toFixed(1)}</span></p>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Latency chart component (Recharts AreaChart)                       */
+/* ------------------------------------------------------------------ */
+
+function LatencyChart({ data }: { data: ChartPoint[] }) {
+  if (data.length === 0) {
+    return (
+      <div className="h-[120px] flex items-center justify-center text-xs text-gray-600">
+        Collecting data...
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-[120px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+          <defs>
+            <linearGradient id="latencyGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
+              <stop offset="100%" stopColor="#10b981" stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <XAxis
+            dataKey="timeLabel"
+            tick={{ fill: "#6b7280", fontSize: 10 }}
+            axisLine={false}
+            tickLine={false}
+            interval="preserveStartEnd"
+            minTickGap={60}
+          />
+          <YAxis
+            tick={{ fill: "#6b7280", fontSize: 10 }}
+            axisLine={false}
+            tickLine={false}
+            width={40}
+            tickFormatter={(v: number) => `${v}`}
+          />
+          <Tooltip content={<ChartTooltip />} />
+          <Area
+            type="monotone"
+            dataKey="latency"
+            stroke="#10b981"
+            strokeWidth={1.5}
+            fill="url(#latencyGrad)"
+            dot={false}
+            activeDot={{ r: 3, fill: "#10b981", stroke: "#000", strokeWidth: 2 }}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Model detail panel (expanded view with chart + stats)              */
+/* ------------------------------------------------------------------ */
+
+function ModelDetailPanel({ provider, model }: { provider: string; model: string }) {
+  const [chartData, setChartData] = useState<ChartPoint[]>([]);
+  const [stats, setStats] = useState<{ avgLatency: number; avgTtft: number; avgTps: number | null } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const res = await fetch(
+          `/api/status/history?provider=${encodeURIComponent(provider.toLowerCase())}&model=${encodeURIComponent(model)}`
+        );
+        if (!res.ok) throw new Error("failed");
+        const json: HistoryResponse = await res.json();
+        if (cancelled) return;
+
+        const pings = (json.pings || [])
+          .filter((p) => p.latency_ms > 0)
+          .sort((a, b) => a.created_at._seconds - b.created_at._seconds);
+
+        const points: ChartPoint[] = pings.map((p) => {
+          const d = new Date(p.created_at._seconds * 1000);
+          return {
+            time: p.created_at._seconds,
+            timeLabel: d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            latency: Math.round(p.latency_ms),
+            ttft: Math.round(p.ttft_ms),
+            tps: p.tokens_per_second ?? null,
+          };
+        });
+
+        setChartData(points);
+
+        if (pings.length > 0) {
+          const avgLatency = Math.round(pings.reduce((s, p) => s + p.latency_ms, 0) / pings.length);
+          const avgTtft = Math.round(pings.reduce((s, p) => s + p.ttft_ms, 0) / pings.length);
+          const tpsPings = pings.filter((p) => p.tokens_per_second != null && p.tokens_per_second > 0);
+          const avgTps = tpsPings.length > 0
+            ? tpsPings.reduce((s, p) => s + (p.tokens_per_second ?? 0), 0) / tpsPings.length
+            : null;
+          setStats({ avgLatency, avgTtft, avgTps });
+        }
+      } catch {
+        // silently fail — chart just won't show
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [provider, model]);
+
+  if (loading) {
+    return (
+      <div className="pt-4 flex items-center gap-2 text-xs text-gray-500">
+        <RefreshCw size={12} className="animate-spin" />
+        Loading history...
+      </div>
+    );
+  }
+
+  return (
+    <div className="pt-4 space-y-3">
+      {/* Chart */}
+      <div>
+        <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">
+          24h Response Time
+        </p>
+        <LatencyChart data={chartData} />
+      </div>
+
+      {/* Stat boxes */}
+      {stats && (
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-0.5">
+              Avg Latency
+            </p>
+            <p className="text-sm font-mono text-emerald-400">{stats.avgLatency}ms</p>
+          </div>
+          <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-0.5">
+              Avg TTFT
+            </p>
+            <p className="text-sm font-mono text-emerald-400">{stats.avgTtft}ms</p>
+          </div>
+          <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-0.5">
+              Avg Tokens/s
+            </p>
+            <p className="text-sm font-mono text-emerald-400">
+              {stats.avgTps !== null ? stats.avgTps.toFixed(1) : "—"}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Page                                                               */
 /* ------------------------------------------------------------------ */
 
@@ -273,6 +480,11 @@ export default function StatusPage() {
   const [data, setData] = useState<StatusData | null>(null);
   const [isLive, setIsLive] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [expandedModel, setExpandedModel] = useState<string | null>(null);
+
+  const toggleModel = useCallback((key: string) => {
+    setExpandedModel((prev) => (prev === key ? null : key));
+  }, []);
 
   async function fetchStatus() {
     try {
@@ -493,62 +705,82 @@ export default function StatusPage() {
 
                   {/* Models */}
                   <div className="space-y-4">
-                    {provider.models.map((model) => (
-                      <div
-                        key={model.name}
-                        className="rounded-lg bg-white/[0.02] border border-white/[0.04] p-4"
-                      >
-                        {/* Model header row */}
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className="size-2 rounded-full"
-                              style={{
-                                backgroundColor: STATUS_COLORS[model.status],
-                              }}
-                            />
-                            <span className="text-sm font-mono font-medium text-gray-200">
-                              {model.name}
-                            </span>
+                    {provider.models.map((model) => {
+                      const modelKey = `${provider.provider}:${model.name}`;
+                      const isExpanded = expandedModel === modelKey;
+                      return (
+                        <div
+                          key={model.name}
+                          className="rounded-lg bg-white/[0.02] border border-white/[0.04] p-4"
+                        >
+                          {/* Model header row — clickable */}
+                          <button
+                            type="button"
+                            onClick={() => toggleModel(modelKey)}
+                            className="w-full flex items-center justify-between mb-3 cursor-pointer group"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="size-2 rounded-full"
+                                style={{
+                                  backgroundColor: STATUS_COLORS[model.status],
+                                }}
+                              />
+                              <span className="text-sm font-mono font-medium text-gray-200 group-hover:text-white transition-colors">
+                                {model.name}
+                              </span>
+                              <ChevronDown
+                                size={14}
+                                className={`text-gray-600 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+                              />
+                            </div>
+                            {model.uptime24h !== null && (
+                              <span className="text-xs text-gray-500">
+                                {model.uptime24h}% uptime (24h)
+                              </span>
+                            )}
+                          </button>
+
+                          {/* Metrics row */}
+                          <div className="grid grid-cols-2 gap-3 mb-3">
+                            <div>
+                              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-0.5">
+                                Latency
+                              </p>
+                              <p className="text-sm font-mono text-white">
+                                {model.latency !== null
+                                  ? `${model.latency}ms`
+                                  : "—"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-0.5">
+                                TTFT
+                              </p>
+                              <p className="text-sm font-mono text-white">
+                                {model.ttft !== null ? `${model.ttft}ms` : "—"}
+                              </p>
+                            </div>
                           </div>
-                          {model.uptime24h !== null && (
-                            <span className="text-xs text-gray-500">
-                              {model.uptime24h}% uptime (24h)
-                            </span>
+
+                          {/* Sparkline */}
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">
+                              24h Latency
+                            </p>
+                            <Sparkline data={model.latencyHistory} />
+                          </div>
+
+                          {/* Expanded detail panel */}
+                          {isExpanded && (
+                            <ModelDetailPanel
+                              provider={provider.provider}
+                              model={model.name}
+                            />
                           )}
                         </div>
-
-                        {/* Metrics row */}
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                          <div>
-                            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-0.5">
-                              Latency
-                            </p>
-                            <p className="text-sm font-mono text-white">
-                              {model.latency !== null
-                                ? `${model.latency}ms`
-                                : "—"}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-0.5">
-                              TTFT
-                            </p>
-                            <p className="text-sm font-mono text-white">
-                              {model.ttft !== null ? `${model.ttft}ms` : "—"}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Sparkline */}
-                        <div>
-                          <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">
-                            24h Latency
-                          </p>
-                          <Sparkline data={model.latencyHistory} />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </motion.div>
               ))}
