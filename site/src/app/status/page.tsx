@@ -26,6 +26,7 @@ import {
 
 interface ModelStatus {
   name: string;
+  modelId: string; // actual model ID for API calls (e.g. "claude-haiku-4-5")
   provider?: string;
   status: "operational" | "degraded" | "down";
   latency: number | null;
@@ -78,7 +79,8 @@ const DEMO_DATA: StatusData = {
       status: "operational",
       models: [
         {
-          name: "claude-sonnet-4-6",
+          name: "Claude Sonnet 4.6",
+          modelId: "claude-sonnet-4-6",
           status: "operational",
           latency: 842,
           ttft: 312,
@@ -89,7 +91,8 @@ const DEMO_DATA: StatusData = {
           ],
         },
         {
-          name: "claude-haiku-3.5",
+          name: "Claude Haiku 3.5",
+          modelId: "claude-haiku-3.5",
           status: "operational",
           latency: 320,
           ttft: 145,
@@ -100,7 +103,8 @@ const DEMO_DATA: StatusData = {
           ],
         },
         {
-          name: "claude-opus-4-6",
+          name: "Claude Opus 4.6",
+          modelId: "claude-opus-4-6",
           status: "operational",
           latency: 1850,
           ttft: 620,
@@ -118,7 +122,8 @@ const DEMO_DATA: StatusData = {
       status: "operational",
       models: [
         {
-          name: "gpt-4o",
+          name: "GPT-4o",
+          modelId: "gpt-4o",
           status: "operational",
           latency: 680,
           ttft: 280,
@@ -129,7 +134,8 @@ const DEMO_DATA: StatusData = {
           ],
         },
         {
-          name: "gpt-4o-mini",
+          name: "GPT-4o Mini",
+          modelId: "gpt-4o-mini",
           status: "operational",
           latency: 290,
           ttft: 120,
@@ -141,6 +147,7 @@ const DEMO_DATA: StatusData = {
         },
         {
           name: "o3",
+          modelId: "o3",
           status: "operational",
           latency: 2200,
           ttft: 850,
@@ -502,6 +509,7 @@ export default function StatusPage() {
               m.status === "error" ? "down" : "degraded";
             grouped.get(provider)!.push({
               name: m.displayName || m.model || m.id,
+              modelId: m.model || m.id,
               status,
               latency: m.avg_latency_ms ?? m.latency_ms ?? null,
               ttft: m.ttft_ms ?? null,
@@ -775,7 +783,7 @@ export default function StatusPage() {
                           {isExpanded && (
                             <ModelDetailPanel
                               provider={provider.provider}
-                              model={model.name}
+                              model={model.modelId}
                             />
                           )}
                         </div>
