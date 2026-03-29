@@ -39,7 +39,7 @@ function stagger(i: number) {
 const navLinks = [
   { label: "Features", href: "#features" },
   { label: "Pricing", href: "#pricing" },
-  { label: "Docs", href: "https://github.com/ModelTrack/modeltrack#quick-start" },
+  { label: "Docs", href: "/docs" },
   { label: "GitHub", href: "https://github.com/ModelTrack/modeltrack" },
 ];
 
@@ -152,7 +152,7 @@ const footerColumns = [
     links: [
       { label: "Features", href: "#features" },
       { label: "Pricing", href: "#pricing" },
-      { label: "Docs", href: "https://github.com/ModelTrack/modeltrack#quick-start" },
+      { label: "Docs", href: "/docs" },
       { label: "Changelog", href: "https://github.com/ModelTrack/modeltrack/releases" },
     ],
   },
