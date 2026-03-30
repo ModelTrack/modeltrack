@@ -33,10 +33,24 @@ const fadeUp = {
   transition: { duration: 0.5, ease: "easeOut" as const },
 };
 
+/* Hero/above-the-fold variant: animates immediately on mount */
+const fadeUpImmediate = {
+  initial: { opacity: 0, y: 30, filter: "blur(4px)" },
+  animate: { opacity: 1, y: 0, filter: "blur(0px)" },
+  transition: { duration: 0.5, ease: "easeOut" as const },
+};
+
 function stagger(i: number) {
   return {
     ...fadeUp,
     transition: { ...fadeUp.transition, delay: i * 0.08 },
+  };
+}
+
+function staggerImmediate(i: number) {
+  return {
+    ...fadeUpImmediate,
+    transition: { ...fadeUpImmediate.transition, delay: i * 0.08 },
   };
 }
 
@@ -262,7 +276,7 @@ export default function Home() {
 
         <div className="relative max-w-6xl mx-auto px-6 text-center">
           {/* Shiny badge */}
-          <motion.div {...stagger(0)} className="flex justify-center mb-8">
+          <motion.div {...staggerImmediate(0)} className="flex justify-center mb-8">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5 backdrop-blur-sm">
               <Sparkles className="size-3.5 text-emerald-400" />
               <AnimatedShinyText className="text-sm">
@@ -273,7 +287,7 @@ export default function Home() {
           </motion.div>
 
           <motion.h1
-            {...stagger(1)}
+            {...staggerImmediate(1)}
             className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.08]"
           >
             Know exactly what{" "}
@@ -283,7 +297,7 @@ export default function Home() {
           </motion.h1>
 
           <motion.p
-            {...stagger(2)}
+            {...staggerImmediate(2)}
             className="mt-6 text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed"
           >
             ModelTrack sits between your app and every LLM API. Track tokens,
@@ -291,7 +305,7 @@ export default function Home() {
           </motion.p>
 
           <motion.div
-            {...stagger(3)}
+            {...staggerImmediate(3)}
             className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <Link href="https://app.modeltrack.ai/signup">
@@ -326,7 +340,7 @@ export default function Home() {
       <section className="border-t border-b border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-6 py-10">
           <motion.div
-            {...fadeUp}
+            {...fadeUpImmediate}
             className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center"
           >
             <div className="flex flex-col items-center gap-1">
@@ -371,7 +385,7 @@ export default function Home() {
       {/* ============================================================ */}
       {/*  D. Features Bento Grid                                       */}
       {/* ============================================================ */}
-      <section id="features" className="relative py-32">
+      <section id="features" className="relative py-32 scroll-mt-24">
         {/* Dot pattern background */}
         <DotPattern
           width={24}
@@ -643,7 +657,7 @@ export default function Home() {
       {/* ============================================================ */}
       <section
         id="pricing"
-        className="py-32 border-t border-white/[0.06] bg-white/[0.01]"
+        className="py-32 border-t border-white/[0.06] bg-white/[0.01] scroll-mt-24"
       >
         <div className="max-w-6xl mx-auto px-6">
           <motion.div {...fadeUp} className="text-center mb-16">
