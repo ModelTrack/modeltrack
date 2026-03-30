@@ -1,6 +1,6 @@
 # ModelTrack Roadmap to Beta
 
-## Current State: Alpha (Internal Testing)
+## Current State: Phase 3 Complete — Ready for Beta Launch
 
 ### What's Built
 - [x] Go LLM proxy (Anthropic, OpenAI, Bedrock, Azure)
@@ -14,54 +14,30 @@
 - [x] Executive reports with CSV export + Slack delivery
 - [x] Infrastructure collector (AWS CUR, OpenCost, GPU metrics)
 - [x] 11-page self-hosted dashboard
-- [x] Python + Node.js SDKs
+- [x] Python + Node.js SDKs (with API key support)
 - [x] Marketing website (modeltrack.ai)
 - [x] Documentation site (/docs)
 - [x] Public status page with live monitoring (/status)
-- [x] Firebase model monitor (9 models, 5-min pings)
+- [x] Firebase model monitor (9 LLM models + proxy self-monitoring)
 - [x] Cloud app with auth (Firebase Auth + Firestore)
+- [x] Cloud proxy on Cloud Run with API key auth
+- [x] Cloud Functions API (11 endpoints)
+- [x] All dashboard pages with charts (Overview, Models, Features, Teams, Sessions, Forecast, Estimator, Reports, Alerts, Settings)
+- [x] Custom domains (app.modeltrack.ai, proxy.modeltrack.ai)
+- [x] Rate limiting (100 req/min per workspace)
+- [x] Free tier usage limits (50K events/month)
+- [x] Budget config UI + cloud proxy enforcement
+- [x] Workspace invite flow
+- [x] Privacy Policy, Terms of Service, Security pages
+- [x] Proxy uptime self-monitoring
 
 ---
 
-## Phase 1: Cloud MVP (Weeks 1-2)
-*Goal: A user can sign up, get a proxy URL, and see their data in a dashboard.*
+## ~~Phase 1: Cloud MVP~~ ✅ COMPLETE
+## ~~Phase 2: Core Cloud Features~~ ✅ COMPLETE
+## ~~Phase 3: Polish & Trust~~ ✅ COMPLETE
 
-- [ ] Cloud proxy on Cloud Run (multi-tenant, writes to Firestore)
-- [ ] Cloud Functions API (reads from Firestore, serves dashboard data)
-- [ ] Wire cloud dashboard to Cloud Functions API
-- [ ] Deploy cloud proxy to Cloud Run
-- [ ] Deploy Cloud Functions
-- [ ] Deploy cloud dashboard to Netlify (app.modeltrack.ai)
-- [ ] DNS: proxy.modeltrack.ai → Cloud Run
-- [ ] DNS: app.modeltrack.ai → Netlify
-- [ ] End-to-end test: sign up → get proxy URL → send request → see it in dashboard
-- [ ] Onboarding flow polish (copy button works, instructions are clear)
-
-## Phase 2: Core Cloud Features (Weeks 3-4)
-*Goal: Feature parity with the self-hosted dashboard for the most important views.*
-
-- [ ] Overview page with real data (spend today/week/month, top model, top team, trend chart)
-- [ ] Models page (cost breakdown by model)
-- [ ] Teams page (cost breakdown by team)
-- [ ] Features page (cost per AI feature)
-- [ ] Sessions page (multi-step workflow tracking)
-- [ ] Alerts page (anomaly detection from Firestore data)
-- [ ] Budget configuration UI (set budgets per team/app in the cloud dashboard)
-- [ ] Budget enforcement in cloud proxy (read budgets from Firestore)
-
-## Phase 3: Polish & Trust (Weeks 5-6)
-*Goal: Good enough for external users to trust with their API traffic.*
-
-- [ ] SSL/TLS verification on proxy (users need to trust it)
-- [ ] Rate limiting on cloud proxy (per workspace)
-- [ ] Workspace invite flow (invite team members by email)
-- [ ] Usage limits on free tier (e.g., 100K events/month)
-- [ ] Error handling + logging (structured logs in Cloud Logging)
-- [ ] Uptime monitoring for the cloud proxy itself
-- [ ] Privacy policy + terms of service pages
-- [ ] Security page (how API keys are handled, data flow diagram)
-
-## Phase 4: Beta Launch (Week 7-8)
+## Phase 4: Beta Launch (Next)
 *Goal: Public beta with real users.*
 
 - [ ] Publish Python SDK to PyPI (`pip install modeltrack`)
@@ -71,7 +47,6 @@
 - [ ] Post Show HN
 - [ ] Post to r/MachineLearning, r/LocalLLaMA, r/devops
 - [ ] Submit to Product Hunt
-- [ ] Hacker News "Show HN: ModelTrack — open-source real-time AI cost control"
 - [ ] Share in FinOps Foundation Slack
 - [ ] Add GitHub star badge to README and website
 
@@ -81,13 +56,10 @@
 - [ ] Stripe billing integration (free → pro → enterprise tiers)
 - [ ] Response caching in cloud proxy
 - [ ] Model routing in cloud proxy
-- [ ] Prompt analysis in cloud proxy
-- [ ] Cost forecasting in cloud dashboard
-- [ ] Pre-deployment estimator in cloud dashboard
-- [ ] Weekly email reports (in addition to Slack)
+- [ ] Weekly email reports
 - [ ] MCP server (expose cost data to AI assistants)
-- [ ] Terraform provider (manage budgets/routing as code)
-- [ ] GitHub Action for CI/CD cost impact comments on PRs
+- [ ] Terraform provider
+- [ ] GitHub Action for CI/CD cost impact
 - [ ] Helm chart for self-hosted K8s deployment
 - [ ] SOC 2 Type I preparation
 
@@ -102,10 +74,3 @@
 | GitHub stars | 500 |
 | Weekly active dashboard users | 20 |
 | Requests proxied | 100K total |
-| Net Promoter Score | >40 |
-
-## Non-Goals for Beta
-- Multi-cloud infrastructure monitoring (GPU, SageMaker) — self-hosted only
-- Enterprise features (SSO, RBAC, audit logs) — post-beta
-- Mobile app
-- On-premise deployment support
