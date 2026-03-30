@@ -7,6 +7,7 @@ Usage:
     # All Anthropic/OpenAI calls are now tracked automatically.
     # Configure via environment variables:
     #   MODELTRACK_PROXY_URL=http://localhost:8080
+    #   MODELTRACK_API_KEY=mt_...  (required for cloud proxy)
     #   MODELTRACK_TEAM=my-team
     #   MODELTRACK_APP=my-app
     #   MODELTRACK_FEATURE=my-feature
@@ -29,6 +30,7 @@ logger = logging.getLogger("modeltrack")
 
 _config = {
     "proxy_url": os.environ.get("MODELTRACK_PROXY_URL", "http://localhost:8080"),
+    "api_key": os.environ.get("MODELTRACK_API_KEY", ""),
     "team": os.environ.get("MODELTRACK_TEAM", ""),
     "app": os.environ.get("MODELTRACK_APP", ""),
     "feature": os.environ.get("MODELTRACK_FEATURE", ""),
@@ -44,6 +46,7 @@ _local = threading.local()
 
 def configure(
     proxy_url: str = "",
+    api_key: str = "",
     team: str = "",
     app: str = "",
     feature: str = "",
@@ -55,6 +58,8 @@ def configure(
     """Explicitly configure ModelTrack. Overrides environment variables."""
     if proxy_url:
         _config["proxy_url"] = proxy_url
+    if api_key:
+        _config["api_key"] = api_key
     if team:
         _config["team"] = team
     if app:
@@ -104,6 +109,12 @@ def session(session_id: str, trace_id: str = ""):
 def _build_headers() -> dict:
     """Build the X-ModelTrack-* headers from current config and thread-local state."""
     headers = {}
+
+    # API key for cloud proxy authentication.
+    api_key = _config.get("api_key", "")
+    if api_key:
+        headers["X-ModelTrack-Key"] = api_key
+
     mapping = {
         "X-ModelTrack-Team": "team",
         "X-ModelTrack-App": "app",

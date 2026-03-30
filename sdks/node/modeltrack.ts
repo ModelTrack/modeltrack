@@ -10,6 +10,7 @@
  *
  * Configure via environment variables:
  *   MODELTRACK_PROXY_URL=http://localhost:8080
+ *   MODELTRACK_API_KEY=mt_...  (required for cloud proxy)
  *   MODELTRACK_TEAM=my-team
  *   MODELTRACK_APP=my-app
  *   MODELTRACK_FEATURE=my-feature
@@ -25,6 +26,7 @@
 
 interface ModelTrackConfig {
   proxyUrl: string;
+  apiKey: string;
   team: string;
   app: string;
   feature: string;
@@ -36,6 +38,7 @@ interface ModelTrackConfig {
 
 const config: ModelTrackConfig = {
   proxyUrl: process.env.MODELTRACK_PROXY_URL || "http://localhost:8080",
+  apiKey: process.env.MODELTRACK_API_KEY || "",
   team: process.env.MODELTRACK_TEAM || "",
   app: process.env.MODELTRACK_APP || "",
   feature: process.env.MODELTRACK_FEATURE || "",
@@ -51,6 +54,7 @@ let _activeTraceId: string | null = null;
 
 export function configure(opts: Partial<Omit<ModelTrackConfig, "proxyUrl"> & { proxyUrl: string }>): void {
   if (opts.proxyUrl) config.proxyUrl = opts.proxyUrl;
+  if (opts.apiKey) config.apiKey = opts.apiKey;
   if (opts.team) config.team = opts.team;
   if (opts.app) config.app = opts.app;
   if (opts.feature) config.feature = opts.feature;
@@ -99,6 +103,7 @@ export async function withSession<T>(
 function buildHeaders(): Record<string, string> {
   const headers: Record<string, string> = {};
 
+  if (config.apiKey) headers["X-ModelTrack-Key"] = config.apiKey;
   if (config.team) headers["X-ModelTrack-Team"] = config.team;
   if (config.app) headers["X-ModelTrack-App"] = config.app;
   if (config.feature) headers["X-ModelTrack-Feature"] = config.feature;
