@@ -155,6 +155,7 @@ const footerColumns = [
       { label: "Features", href: "#features" },
       { label: "Pricing", href: "#pricing" },
       { label: "Docs", href: "/docs" },
+      { label: "Security", href: "/security" },
       {
         label: "Changelog",
         href: "https://github.com/ModelTrack/modeltrack/releases",
@@ -185,6 +186,8 @@ const footerColumns = [
   {
     title: "Legal",
     links: [
+      { label: "Privacy", href: "/privacy" },
+      { label: "Terms", href: "/terms" },
       {
         label: "License",
         href: "https://github.com/ModelTrack/modeltrack/blob/master/LICENSE",

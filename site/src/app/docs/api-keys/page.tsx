@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 function CodeBlock({ children, filename }: { children: string; filename?: string }) {
   return (
     <div className="rounded-xl border border-white/[0.06] bg-gray-900 overflow-hidden my-4">
@@ -169,6 +171,19 @@ export default function ApiKeysPage() {
         no API key, no Authorization header, no request body, no response body.
         Only metadata needed for cost tracking and attribution.
       </p>
+
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] p-4 my-6">
+        <p className="text-sm text-gray-300 leading-relaxed">
+          For a full overview of our security architecture, data handling, and
+          infrastructure, see the{" "}
+          <Link
+            href="/security"
+            className="text-emerald-400 underline underline-offset-2 hover:text-emerald-300"
+          >
+            Security page
+          </Link>.
+        </p>
+      </div>
 
       {/* Comparison */}
       <h2 className="text-xl font-semibold text-white mt-12 mb-4">How this compares</h2>
