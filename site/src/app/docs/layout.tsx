@@ -33,12 +33,6 @@ export default function DocsLayout({
           </Link>
           <div className="hidden md:flex items-center gap-8">
             <Link
-              href="/docs"
-              className="text-sm text-white font-medium transition-colors duration-200"
-            >
-              Docs
-            </Link>
-            <Link
               href="/#features"
               className="text-sm text-gray-400 hover:text-white transition-colors duration-200"
             >
@@ -51,6 +45,18 @@ export default function DocsLayout({
               Pricing
             </Link>
             <Link
+              href="/docs"
+              className="text-sm text-white font-medium transition-colors duration-200"
+            >
+              Docs
+            </Link>
+            <Link
+              href="/status"
+              className="text-sm text-gray-400 hover:text-white transition-colors duration-200"
+            >
+              Status
+            </Link>
+            <Link
               href="https://github.com/ModelTrack/modeltrack"
               className="text-sm text-gray-400 hover:text-white transition-colors duration-200"
             >
@@ -58,7 +64,7 @@ export default function DocsLayout({
             </Link>
           </div>
           <Link
-            href="/docs"
+            href="https://app.modeltrack.ai/signup"
             className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-black hover:bg-emerald-400 transition-colors duration-200"
           >
             Get Started

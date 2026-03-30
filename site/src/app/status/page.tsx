@@ -175,6 +175,19 @@ const fadeUp = {
   transition: { duration: 0.5, ease: "easeOut" as const },
 };
 
+const fadeUpImmediate = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.5, ease: "easeOut" as const },
+};
+
+function staggerImmediate(i: number) {
+  return {
+    ...fadeUpImmediate,
+    transition: { ...fadeUpImmediate.transition, delay: i * 0.08 },
+  };
+}
+
 function stagger(i: number) {
   return {
     ...fadeUp,
@@ -607,7 +620,7 @@ export default function StatusPage() {
           </div>
 
           <Link
-            href="https://github.com/ModelTrack/modeltrack#quick-start"
+            href="https://app.modeltrack.ai/signup"
             className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-black hover:bg-emerald-400 transition-colors duration-200"
           >
             Get Started
@@ -627,7 +640,7 @@ export default function StatusPage() {
         </div>
 
         <div className="relative max-w-6xl mx-auto px-6 text-center">
-          <motion.div {...stagger(0)}>
+          <motion.div {...staggerImmediate(0)}>
             <p className="text-sm text-emerald-400 font-medium mb-3 tracking-wide uppercase">
               AI Model Status
             </p>
@@ -642,7 +655,7 @@ export default function StatusPage() {
 
           {/* Overall status banner */}
           {!loading && data && (
-            <motion.div {...stagger(1)} className="mt-8">
+            <motion.div {...staggerImmediate(1)} className="mt-8">
               <div
                 className={`inline-flex items-center gap-3 rounded-full px-6 py-3 border ${STATUS_BG[data.overall]} ${STATUS_BORDER[data.overall]}`}
               >
@@ -663,7 +676,7 @@ export default function StatusPage() {
           )}
 
           {loading && (
-            <motion.div {...stagger(1)} className="mt-8">
+            <motion.div {...staggerImmediate(1)} className="mt-8">
               <div className="inline-flex items-center gap-2 text-gray-500 text-sm">
                 <RefreshCw size={14} className="animate-spin" />
                 Loading status...
@@ -896,7 +909,7 @@ export default function StatusPage() {
             </p>
             <div className="mt-8">
               <Link
-                href="https://github.com/ModelTrack/modeltrack#quick-start"
+                href="https://app.modeltrack.ai/signup"
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-8 py-3.5 text-base font-medium text-black hover:bg-emerald-400 transition-colors duration-200"
               >
                 Try ModelTrack

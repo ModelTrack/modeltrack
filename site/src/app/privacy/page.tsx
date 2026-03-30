@@ -24,10 +24,11 @@ export default function PrivacyPage() {
             <span className="text-white">Track</span>
           </Link>
           <div className="hidden md:flex items-center gap-8">
-            <Link href="/docs" className="text-sm text-gray-400 hover:text-white transition-colors duration-300">Docs</Link>
             <Link href="/#features" className="text-sm text-gray-400 hover:text-white transition-colors duration-300">Features</Link>
             <Link href="/#pricing" className="text-sm text-gray-400 hover:text-white transition-colors duration-300">Pricing</Link>
-            <Link href="/security" className="text-sm text-gray-400 hover:text-white transition-colors duration-300">Security</Link>
+            <Link href="/docs" className="text-sm text-gray-400 hover:text-white transition-colors duration-300">Docs</Link>
+            <Link href="/status" className="text-sm text-gray-400 hover:text-white transition-colors duration-300">Status</Link>
+            <Link href="https://github.com/ModelTrack/modeltrack" className="text-sm text-gray-400 hover:text-white transition-colors duration-300">GitHub</Link>
           </div>
           <Link
             href="https://app.modeltrack.ai/signup"
