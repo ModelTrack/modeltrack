@@ -16,7 +16,11 @@ export async function GET(request: Request) {
     if (!res.ok) throw new Error("failed");
     const data = await res.json();
     return new Response(JSON.stringify(data), {
-      headers: { "Content-Type": "application/json", "Cache-Control": "public, s-maxage=60" },
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "private, max-age=60",
+        "Vary": "Accept-Encoding",
+      },
     });
   } catch {
     return new Response(JSON.stringify({ pings: [] }), {

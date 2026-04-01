@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
@@ -641,6 +641,7 @@ function ComparisonChart({
   const [hiddenModels, setHiddenModels] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
+  const hasRenderedOnce = useRef(false);
 
   // Build model list from status data — stable reference via JSON comparison
   const filteredProviders = filterProvider
@@ -712,6 +713,10 @@ function ComparisonChart({
     if (rawResults.length === 0 || models.length === 0) return;
     const points = bucketPings(rawResults, models, bucketSize);
     setChartData(points);
+    // Enable animation after first render
+    requestAnimationFrame(() => {
+      hasRenderedOnce.current = true;
+    });
   }, [rawResults, models, bucketSize]);
 
   const toggleModel = useCallback((key: string) => {
@@ -846,7 +851,7 @@ function ComparisonChart({
                     }}
                     connectNulls
                     name={m.displayName}
-                    isAnimationActive={true}
+                    isAnimationActive={hasRenderedOnce.current}
                     animationDuration={800}
                     animationEasing="ease-in-out"
                   />
