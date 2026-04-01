@@ -14,9 +14,12 @@ import {
 import {
   AreaChart,
   Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
+  CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
 
@@ -273,7 +276,7 @@ function Sparkline({ data }: { data: (number | null)[] }) {
             />
           );
         }
-        const pct = ((v - min) / range) * 80 + 20; // 20-100% height
+        const pct = ((v - min) / range) * 80 + 20;
         return (
           <div
             key={i}
@@ -288,12 +291,24 @@ function Sparkline({ data }: { data: (number | null)[] }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Uptime timeline component                                          */
+/*  Uptime timeline component (Atlassian-style)                        */
 /* ------------------------------------------------------------------ */
 
-function UptimeTimeline({ modelName }: { modelName: string }) {
-  // 90 days of no-data bars
+function UptimeTimeline({
+  modelName,
+  status,
+}: {
+  modelName: string;
+  status: "operational" | "degraded" | "down";
+}) {
   const days = Array.from({ length: 90 });
+  const statusColor =
+    status === "operational"
+      ? "bg-emerald-500"
+      : status === "degraded"
+      ? "bg-yellow-500"
+      : "bg-red-500";
+
   return (
     <div className="flex items-center gap-[1px]">
       <span className="text-xs text-gray-500 w-36 truncate flex-shrink-0 font-mono">
@@ -303,20 +318,26 @@ function UptimeTimeline({ modelName }: { modelName: string }) {
         {days.map((_, i) => (
           <div
             key={i}
-            className="h-4 bg-white/[0.06] rounded-[1px] flex-1 min-w-[2px]"
-            title="No data yet"
+            className={`h-4 rounded-[1px] flex-1 min-w-[2px] ${
+              i === 89 ? statusColor : "bg-white/[0.06]"
+            }`}
+            title={i === 89 ? `Today: ${status}` : "No data yet"}
           />
         ))}
       </div>
-      <span className="text-[10px] text-gray-600 ml-2 flex-shrink-0">
-        No data yet
+      <span className="text-[10px] text-gray-600 ml-2 flex-shrink-0 w-16 text-right">
+        {status === "operational"
+          ? "Operational"
+          : status === "degraded"
+          ? "Degraded"
+          : "Down"}
       </span>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Custom tooltip for the chart                                       */
+/*  Custom tooltip for the detail chart                                */
 /* ------------------------------------------------------------------ */
 
 function ChartTooltip({ active, payload }: { active?: boolean; payload?: { payload: ChartPoint }[] }) {
@@ -435,7 +456,7 @@ function ModelDetailPanel({ provider, model }: { provider: string; model: string
           setStats({ avgLatency, avgTtft, avgTps });
         }
       } catch {
-        // silently fail — chart just won't show
+        // silently fail
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -455,39 +476,413 @@ function ModelDetailPanel({ provider, model }: { provider: string; model: string
 
   return (
     <div className="pt-4 space-y-3">
-      {/* Chart */}
       <div>
         <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">
           24h Response Time
         </p>
         <LatencyChart data={chartData} />
       </div>
-
-      {/* Stat boxes */}
       {stats && (
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2">
-            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-0.5">
-              Avg Latency
-            </p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-0.5">Avg Latency</p>
             <p className="text-sm font-mono text-emerald-400">{stats.avgLatency}ms</p>
           </div>
           <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2">
-            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-0.5">
-              Avg TTFT
-            </p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-0.5">Avg TTFT</p>
             <p className="text-sm font-mono text-emerald-400">{stats.avgTtft}ms</p>
           </div>
           <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2">
-            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-0.5">
-              Avg Tokens/s
-            </p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-0.5">Avg Tokens/s</p>
             <p className="text-sm font-mono text-emerald-400">
               {stats.avgTps !== null ? stats.avgTps.toFixed(1) : "—"}
             </p>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Model color palette for shared graph                               */
+/* ------------------------------------------------------------------ */
+
+const MODEL_COLORS = [
+  "#10b981", // emerald
+  "#6366f1", // indigo
+  "#f59e0b", // amber
+  "#ec4899", // pink
+  "#06b6d4", // cyan
+  "#8b5cf6", // violet
+  "#f97316", // orange
+  "#14b8a6", // teal
+  "#e11d48", // rose
+  "#84cc16", // lime
+] as const;
+
+type ComparisonMetric = "latency" | "ttft" | "tps";
+
+const METRIC_LABELS: Record<ComparisonMetric, string> = {
+  latency: "Latency",
+  ttft: "TTFT",
+  tps: "Tokens/s",
+};
+
+const METRIC_UNITS: Record<ComparisonMetric, string> = {
+  latency: "ms",
+  ttft: "ms",
+  tps: "tok/s",
+};
+
+type BucketSize = 1 | 5 | 30 | 60;
+
+const BUCKET_LABELS: Record<BucketSize, string> = {
+  1: "1m",
+  5: "5m",
+  30: "30m",
+  60: "1h",
+};
+
+/* ------------------------------------------------------------------ */
+/*  Shared comparison chart (Grafana-style)                            */
+/* ------------------------------------------------------------------ */
+
+interface ModelEntry {
+  key: string; // "provider:modelId"
+  displayName: string;
+  provider: string;
+  modelId: string;
+  color: string;
+}
+
+interface ComparisonPoint {
+  time: number;
+  timeLabel: string;
+  [modelKey: string]: number | string | null; // dynamic keys per model
+}
+
+function bucketPings(
+  results: PromiseSettledResult<{ key: string; pings: PingData[] }>[],
+  modelEntries: ModelEntry[],
+  bucketMinutes: BucketSize = 5
+): ComparisonPoint[] {
+  const BUCKET_MS = bucketMinutes * 60 * 1000;
+  const now = Date.now();
+  const start = now - 24 * 60 * 60 * 1000;
+  const bucketCount = Math.ceil((now - start) / BUCKET_MS);
+
+  const buckets: Map<number, ComparisonPoint> = new Map();
+  for (let i = 0; i < bucketCount; i++) {
+    const t = start + i * BUCKET_MS;
+    const d = new Date(t);
+    buckets.set(i, {
+      time: t,
+      timeLabel: d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    });
+  }
+
+  for (const result of results) {
+    if (result.status !== "fulfilled") continue;
+    const { key, pings } = result.value;
+    const validPings = pings.filter((p) => p.latency_ms > 0);
+
+    const pingsByBucket = new Map<number, PingData[]>();
+    for (const p of validPings) {
+      const ts = p.created_at._seconds * 1000;
+      const bucketIdx = Math.floor((ts - start) / BUCKET_MS);
+      if (bucketIdx < 0 || bucketIdx >= bucketCount) continue;
+      if (!pingsByBucket.has(bucketIdx)) pingsByBucket.set(bucketIdx, []);
+      pingsByBucket.get(bucketIdx)!.push(p);
+    }
+
+    for (const [idx, bPings] of pingsByBucket) {
+      const bucket = buckets.get(idx);
+      if (!bucket) continue;
+      bucket[`${key}:latency`] = Math.round(
+        bPings.reduce((s, p) => s + p.latency_ms, 0) / bPings.length
+      );
+      bucket[`${key}:ttft`] = Math.round(
+        bPings.reduce((s, p) => s + p.ttft_ms, 0) / bPings.length
+      );
+      const tpsPings = bPings.filter(
+        (p) => p.tokens_per_second != null && p.tokens_per_second > 0
+      );
+      bucket[`${key}:tps`] =
+        tpsPings.length > 0
+          ? Math.round(
+              (tpsPings.reduce((s, p) => s + (p.tokens_per_second ?? 0), 0) /
+                tpsPings.length) *
+                10
+            ) / 10
+          : null;
+    }
+  }
+
+  return Array.from(buckets.values()).filter((b) =>
+    modelEntries.some((m) => b[`${m.key}:latency`] != null)
+  );
+}
+
+function ComparisonChart({
+  data,
+  filterProvider,
+  metric,
+  bucketSize,
+}: {
+  data: StatusData;
+  filterProvider?: string;
+  metric: ComparisonMetric;
+  bucketSize: BucketSize;
+}) {
+  const [chartData, setChartData] = useState<ComparisonPoint[]>([]);
+  const [rawResults, setRawResults] = useState<PromiseSettledResult<{ key: string; pings: PingData[] }>[]>([]);
+  const [models, setModels] = useState<ModelEntry[]>([]);
+  const [hiddenModels, setHiddenModels] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
+
+  // Build model list from status data — stable reference via JSON comparison
+  const filteredProviders = filterProvider
+    ? data.providers.filter((p) => p.provider.toLowerCase() === filterProvider.toLowerCase())
+    : data.providers;
+
+  const modelsJson = JSON.stringify(
+    filteredProviders.flatMap((p) =>
+      p.models.map((m) => `${p.provider}:${m.modelId}`)
+    )
+  );
+
+  useEffect(() => {
+    const entries: ModelEntry[] = [];
+    let colorIdx = 0;
+    for (const provider of filteredProviders) {
+      for (const model of provider.models) {
+        entries.push({
+          key: `${provider.provider}:${model.modelId}`,
+          displayName: model.name,
+          provider: provider.provider,
+          modelId: model.modelId,
+          color: MODEL_COLORS[colorIdx % MODEL_COLORS.length],
+        });
+        colorIdx++;
+      }
+    }
+    setModels(entries);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modelsJson]);
+
+  // Fetch history — initial load + 60s polling
+  useEffect(() => {
+    if (models.length === 0) return;
+    let cancelled = false;
+
+    async function fetchAll() {
+      const results = await Promise.allSettled(
+        models.map(async (m) => {
+          const res = await fetch(
+            `/api/status/history?provider=${encodeURIComponent(m.provider.toLowerCase())}&model=${encodeURIComponent(m.modelId)}&hours=24`
+          );
+          if (!res.ok) return { key: m.key, pings: [] as PingData[] };
+          const json: HistoryResponse = await res.json();
+          return { key: m.key, pings: json.pings || [] };
+        })
+      );
+
+      if (cancelled) return;
+
+      setRawResults(results);
+      if (initialLoad) {
+        setLoading(false);
+        setInitialLoad(false);
+      }
+    }
+
+    fetchAll();
+    const interval = setInterval(fetchAll, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [models]);
+
+  // Re-bucket when raw data or bucket size changes
+  useEffect(() => {
+    if (rawResults.length === 0 || models.length === 0) return;
+    const points = bucketPings(rawResults, models, bucketSize);
+    setChartData(points);
+  }, [rawResults, models, bucketSize]);
+
+  const toggleModel = useCallback((key: string) => {
+    setHiddenModels((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const visibleModels = models.filter((m) => !hiddenModels.has(m.key));
+
+  return (
+    <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-2 px-5 py-3 border-b border-white/[0.06] bg-white/[0.02]">
+        <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+        <h3 className="text-sm font-semibold text-white">
+          {filterProvider ?? "All Models"}
+        </h3>
+      </div>
+
+      {/* Chart area */}
+      <div className="px-5 pt-4 pb-2">
+        {loading ? (
+          <div className="h-[300px] flex items-center justify-center text-sm text-gray-600">
+            <RefreshCw size={14} className="animate-spin mr-2" />
+            Loading comparison data...
+          </div>
+        ) : chartData.length === 0 ? (
+          <div className="h-[300px] flex items-center justify-center text-sm text-gray-600">
+            No data available yet — collecting metrics...
+          </div>
+        ) : (
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={chartData}
+                margin={{ top: 8, right: 12, bottom: 0, left: 0 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="rgba(255,255,255,0.04)"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="timeLabel"
+                  tick={{ fill: "#6b7280", fontSize: 10 }}
+                  axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
+                  tickLine={false}
+                  interval="preserveStartEnd"
+                  minTickGap={80}
+                />
+                <YAxis
+                  tick={{ fill: "#6b7280", fontSize: 10 }}
+                  axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
+                  tickLine={false}
+                  width={50}
+                  tickFormatter={(v: number) =>
+                    metric === "tps" ? `${v}` : `${v}ms`
+                  }
+                />
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload || payload.length === 0) return null;
+                    return (
+                      <div className="rounded-lg bg-gray-900/95 border border-white/10 px-4 py-3 text-xs shadow-2xl backdrop-blur-sm min-w-[180px]">
+                        <p className="text-gray-400 mb-2 font-medium">{label}</p>
+                        <div className="space-y-1">
+                          {payload
+                            .filter((p) => p.value != null)
+                            .sort(
+                              (a, b) =>
+                                (typeof b.value === "number" ? b.value : 0) -
+                                (typeof a.value === "number" ? a.value : 0)
+                            )
+                            .map((p) => {
+                              const model = models.find(
+                                (m) => `${m.key}:${metric}` === p.dataKey
+                              );
+                              return (
+                                <div
+                                  key={String(p.dataKey)}
+                                  className="flex items-center justify-between gap-4"
+                                >
+                                  <div className="flex items-center gap-1.5">
+                                    <span
+                                      className="size-2 rounded-full flex-shrink-0"
+                                      style={{
+                                        backgroundColor:
+                                          typeof p.color === "string"
+                                            ? p.color
+                                            : "#888",
+                                      }}
+                                    />
+                                    <span className="text-gray-300 truncate max-w-[120px]">
+                                      {model?.displayName ?? String(p.dataKey)}
+                                    </span>
+                                  </div>
+                                  <span className="font-mono text-white">
+                                    {typeof p.value === "number"
+                                      ? metric === "tps"
+                                        ? p.value.toFixed(1)
+                                        : Math.round(p.value)
+                                      : "—"}
+                                    <span className="text-gray-500 ml-0.5">
+                                      {METRIC_UNITS[metric]}
+                                    </span>
+                                  </span>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    );
+                  }}
+                />
+                {visibleModels.map((m) => (
+                  <Line
+                    key={m.key}
+                    type="monotone"
+                    dataKey={`${m.key}:${metric}`}
+                    stroke={m.color}
+                    strokeWidth={1.5}
+                    dot={false}
+                    activeDot={{
+                      r: 3,
+                      fill: m.color,
+                      stroke: "#000",
+                      strokeWidth: 2,
+                    }}
+                    connectNulls
+                    name={m.displayName}
+                    isAnimationActive={true}
+                    animationDuration={800}
+                    animationEasing="ease-in-out"
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+
+      {/* Legend — clickable to toggle models */}
+      <div className="px-5 pb-4 pt-1">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          {models.map((m) => {
+            const isHidden = hiddenModels.has(m.key);
+            return (
+              <button
+                key={m.key}
+                type="button"
+                onClick={() => toggleModel(m.key)}
+                className={`flex items-center gap-1.5 text-xs transition-opacity duration-150 ${
+                  isHidden ? "opacity-30" : "opacity-100"
+                } hover:opacity-80`}
+              >
+                <span
+                  className="size-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: m.color }}
+                />
+                <span className={isHidden ? "text-gray-600 line-through" : "text-gray-400"}>
+                  {m.displayName}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -500,11 +895,8 @@ export default function StatusPage() {
   const [data, setData] = useState<StatusData | null>(null);
   const [isLive, setIsLive] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [expandedModel, setExpandedModel] = useState<string | null>(null);
-
-  const toggleModel = useCallback((key: string) => {
-    setExpandedModel((prev) => (prev === key ? null : key));
-  }, []);
+  const [sharedMetric, setSharedMetric] = useState<ComparisonMetric>("latency");
+  const [sharedBucket, setSharedBucket] = useState<BucketSize>(60);
 
   async function fetchStatus() {
     try {
@@ -687,136 +1079,91 @@ export default function StatusPage() {
       </section>
 
       {/* ============================================================ */}
-      {/*  B. Provider Cards                                            */}
+      {/*  B. Comparison Graphs (one per provider)                      */}
       {/* ============================================================ */}
       {data && (
-        <section className="pb-16">
-          <div className="max-w-6xl mx-auto px-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              {data.providers.map((provider, pi) => (
-                <motion.div
-                  key={provider.provider}
-                  {...stagger(pi + 2)}
-                  className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-6 hover:border-emerald-500/20 transition-colors duration-200"
-                >
-                  {/* Provider header */}
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center size-10 rounded-lg bg-white/[0.06]">
-                        <span className="text-lg font-bold text-white">
-                          {provider.provider[0]}
-                        </span>
-                      </div>
-                      <h2 className="text-lg font-semibold text-white">
-                        {provider.provider}
-                      </h2>
-                    </div>
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${STATUS_BG[provider.status]} ${STATUS_TEXT[provider.status]}`}
+        <section className="pb-12">
+          <div className="max-w-6xl mx-auto px-6 space-y-4">
+            {/* Shared toolbar */}
+            <motion.div
+              {...stagger(1.5)}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white/[0.03] border border-white/[0.06] px-5 py-3"
+            >
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-semibold text-white">
+                  Model Performance
+                </h2>
+                <span className="text-[10px] text-gray-600">24h</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Metric */}
+                <div className="flex items-center gap-1 rounded-lg bg-white/[0.04] p-0.5">
+                  {(Object.keys(METRIC_LABELS) as ComparisonMetric[]).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setSharedMetric(m)}
+                      className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-150 ${
+                        sharedMetric === m
+                          ? "bg-emerald-500/20 text-emerald-400"
+                          : "text-gray-500 hover:text-gray-300"
+                      }`}
                     >
-                      <span
-                        className="size-1.5 rounded-full"
-                        style={{
-                          backgroundColor: STATUS_COLORS[provider.status],
-                        }}
-                      />
-                      {STATUS_LABELS[provider.status]}
-                    </span>
-                  </div>
+                      {METRIC_LABELS[m]}
+                    </button>
+                  ))}
+                </div>
 
-                  {/* Models */}
-                  <div className="space-y-4">
-                    {provider.models.map((model) => {
-                      const modelKey = `${provider.provider}:${model.name}`;
-                      const isExpanded = expandedModel === modelKey;
-                      return (
-                        <div
-                          key={model.name}
-                          className="rounded-lg bg-white/[0.02] border border-white/[0.04] p-4"
-                        >
-                          {/* Model header row — clickable */}
-                          <button
-                            type="button"
-                            onClick={() => toggleModel(modelKey)}
-                            className="w-full flex items-center justify-between mb-3 cursor-pointer group"
-                          >
-                            <div className="flex items-center gap-2">
-                              <span
-                                className="size-2 rounded-full"
-                                style={{
-                                  backgroundColor: STATUS_COLORS[model.status],
-                                }}
-                              />
-                              <span className="text-sm font-mono font-medium text-gray-200 group-hover:text-white transition-colors">
-                                {model.name}
-                              </span>
-                              <ChevronDown
-                                size={14}
-                                className={`text-gray-600 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
-                              />
-                            </div>
-                            {model.uptime24h !== null && (
-                              <span className="text-xs text-gray-500">
-                                {model.uptime24h}% uptime (24h)
-                              </span>
-                            )}
-                          </button>
+                {/* Bucket size */}
+                <div className="flex items-center gap-1 rounded-lg bg-white/[0.04] p-0.5">
+                  {(Object.keys(BUCKET_LABELS) as unknown as BucketSize[]).map((b) => {
+                    const val = Number(b) as BucketSize;
+                    return (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setSharedBucket(val)}
+                        className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-150 ${
+                          sharedBucket === val
+                            ? "bg-emerald-500/20 text-emerald-400"
+                            : "text-gray-500 hover:text-gray-300"
+                        }`}
+                      >
+                        {BUCKET_LABELS[val]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.div>
 
-                          {/* Metrics row */}
-                          <div className="grid grid-cols-2 gap-3 mb-3">
-                            <div>
-                              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-0.5">
-                                Latency
-                              </p>
-                              <p className="text-sm font-mono text-white">
-                                {model.latency !== null
-                                  ? `${model.latency}ms`
-                                  : "—"}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-0.5">
-                                TTFT
-                              </p>
-                              <p className="text-sm font-mono text-white">
-                                {model.ttft !== null ? `${model.ttft}ms` : "—"}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Sparkline */}
-                          <div>
-                            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">
-                              24h Latency
-                            </p>
-                            <Sparkline data={model.latencyHistory} />
-                          </div>
-
-                          {/* Expanded detail panel */}
-                          {isExpanded && (
-                            <ModelDetailPanel
-                              provider={provider.provider}
-                              model={model.modelId}
-                            />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              ))}
+            {/* Charts */}
+            <div className="grid md:grid-cols-2 gap-6">
+              {data.providers
+                .filter((p) => p.provider.toLowerCase() !== "modeltrack")
+                .map((provider, i) => (
+                  <motion.div key={provider.provider} {...stagger(i + 2)}>
+                    <ComparisonChart
+                      data={data}
+                      filterProvider={provider.provider}
+                      metric={sharedMetric}
+                      bucketSize={sharedBucket}
+                    />
+                  </motion.div>
+                ))}
             </div>
           </div>
         </section>
       )}
 
       {/* ============================================================ */}
-      {/*  C. Uptime Timeline                                           */}
+      {/*  C. 90-Day Uptime Timeline (Atlassian-style)                  */}
       {/* ============================================================ */}
       {data && (
         <section className="pb-16">
           <div className="max-w-6xl mx-auto px-6">
-            <motion.div {...stagger(4)}>
+            <motion.div {...stagger(3)}>
               <h2 className="text-xl font-semibold text-white mb-2">
                 90-Day Uptime
               </h2>
@@ -830,6 +1177,7 @@ export default function StatusPage() {
                     <UptimeTimeline
                       key={`${p.provider}-${m.name}`}
                       modelName={m.name}
+                      status={m.status}
                     />
                   ))
                 )}
@@ -843,9 +1191,7 @@ export default function StatusPage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <div className="size-2 rounded-[1px] bg-yellow-500" />
-                      <span className="text-[10px] text-gray-600">
-                        Degraded
-                      </span>
+                      <span className="text-[10px] text-gray-600">Degraded</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <div className="size-2 rounded-[1px] bg-red-500" />
@@ -853,9 +1199,7 @@ export default function StatusPage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <div className="size-2 rounded-[1px] bg-white/[0.06]" />
-                      <span className="text-[10px] text-gray-600">
-                        No data
-                      </span>
+                      <span className="text-[10px] text-gray-600">No data</span>
                     </div>
                   </div>
                   <span className="text-[10px] text-gray-600">Today</span>
