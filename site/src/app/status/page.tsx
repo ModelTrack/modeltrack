@@ -41,8 +41,11 @@ interface ModelStatus {
 interface PingData {
   latency_ms: number;
   ttft_ms: number;
+  ttlt_ms?: number;
+  itl_ms?: number;
   status: string;
   tokens_per_second?: number;
+  output_tokens?: number;
   created_at: { _seconds: number; _nanoseconds: number };
 }
 
@@ -521,18 +524,28 @@ const MODEL_COLORS = [
   "#84cc16", // lime
 ] as const;
 
-type ComparisonMetric = "latency" | "ttft" | "tps";
+type ComparisonMetric = "latency" | "ttft" | "ttlt" | "itl" | "tps" | "error_rate" | "p95" | "output_tokens";
 
 const METRIC_LABELS: Record<ComparisonMetric, string> = {
   latency: "Latency",
   ttft: "TTFT",
+  ttlt: "TTLT",
+  itl: "ITL",
   tps: "Tokens/s",
+  error_rate: "Error %",
+  p95: "P95 Latency",
+  output_tokens: "Tokens Out",
 };
 
 const METRIC_UNITS: Record<ComparisonMetric, string> = {
   latency: "ms",
   ttft: "ms",
+  ttlt: "ms",
+  itl: "ms",
   tps: "tok/s",
+  error_rate: "%",
+  p95: "ms",
+  output_tokens: "tok",
 };
 
 type BucketSize = 1 | 5 | 30 | 60;
@@ -596,15 +609,43 @@ function bucketPings(
       pingsByBucket.get(bucketIdx)!.push(p);
     }
 
+    // Also compute metrics from ALL pings (including errors) for error rate
+    const allPingsByBucket = new Map<number, PingData[]>();
+    for (const p of pings) {
+      const ts = p.created_at._seconds * 1000;
+      const bucketIdx = Math.floor((ts - start) / BUCKET_MS);
+      if (bucketIdx < 0 || bucketIdx >= bucketCount) continue;
+      if (!allPingsByBucket.has(bucketIdx)) allPingsByBucket.set(bucketIdx, []);
+      allPingsByBucket.get(bucketIdx)!.push(p);
+    }
+
     for (const [idx, bPings] of pingsByBucket) {
       const bucket = buckets.get(idx);
       if (!bucket) continue;
+
+      // Avg latency
       bucket[`${key}:latency`] = Math.round(
         bPings.reduce((s, p) => s + p.latency_ms, 0) / bPings.length
       );
+
+      // Avg TTFT
       bucket[`${key}:ttft`] = Math.round(
         bPings.reduce((s, p) => s + p.ttft_ms, 0) / bPings.length
       );
+
+      // TTLT (falls back to latency_ms for older pings without ttlt_ms)
+      const ttltPings = bPings.filter((p) => (p.ttlt_ms ?? p.latency_ms) > 0);
+      bucket[`${key}:ttlt`] = ttltPings.length > 0
+        ? Math.round(ttltPings.reduce((s, p) => s + (p.ttlt_ms ?? p.latency_ms), 0) / ttltPings.length)
+        : null;
+
+      // ITL (inter-token latency)
+      const itlPings = bPings.filter((p) => p.itl_ms != null && p.itl_ms > 0);
+      bucket[`${key}:itl`] = itlPings.length > 0
+        ? Math.round(itlPings.reduce((s, p) => s + (p.itl_ms ?? 0), 0) / itlPings.length * 10) / 10
+        : null;
+
+      // Tokens/s
       const tpsPings = bPings.filter(
         (p) => p.tokens_per_second != null && p.tokens_per_second > 0
       );
@@ -616,6 +657,26 @@ function bucketPings(
                 10
             ) / 10
           : null;
+
+      // Output tokens
+      const otPings = bPings.filter((p) => p.output_tokens != null && p.output_tokens > 0);
+      bucket[`${key}:output_tokens`] = otPings.length > 0
+        ? Math.round(otPings.reduce((s, p) => s + (p.output_tokens ?? 0), 0) / otPings.length * 10) / 10
+        : null;
+
+      // P95 latency
+      if (bPings.length >= 2) {
+        const sorted = bPings.map((p) => p.latency_ms).sort((a, b) => a - b);
+        const p95Idx = Math.min(Math.ceil(sorted.length * 0.95) - 1, sorted.length - 1);
+        bucket[`${key}:p95`] = sorted[p95Idx];
+      } else {
+        bucket[`${key}:p95`] = bPings[0]?.latency_ms ?? null;
+      }
+
+      // Error rate (uses all pings including errors)
+      const allInBucket = allPingsByBucket.get(idx) || bPings;
+      const errorCount = allInBucket.filter((p) => p.status !== "ok").length;
+      bucket[`${key}:error_rate`] = Math.round((errorCount / allInBucket.length) * 1000) / 10;
     }
   }
 
@@ -776,9 +837,11 @@ function ComparisonChart({
                   axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
                   tickLine={false}
                   width={50}
-                  tickFormatter={(v: number) =>
-                    metric === "tps" ? `${v}` : `${v}ms`
-                  }
+                  tickFormatter={(v: number) => {
+                    if (metric === "error_rate") return `${v}%`;
+                    if (metric === "tps" || metric === "output_tokens") return `${v}`;
+                    return `${v}ms`;
+                  }}
                 />
                 <Tooltip
                   content={({ active, payload, label }) => {
@@ -819,7 +882,7 @@ function ComparisonChart({
                                   </div>
                                   <span className="font-mono text-white">
                                     {typeof p.value === "number"
-                                      ? metric === "tps"
+                                      ? metric === "tps" || metric === "itl" || metric === "error_rate"
                                         ? p.value.toFixed(1)
                                         : Math.round(p.value)
                                       : "—"}
