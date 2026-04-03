@@ -101,18 +101,21 @@ const smallFeatures = [
     title: "Response Caching",
     description:
       "Cache identical requests to eliminate duplicate API calls. 20-50% cost reduction with zero latency overhead.",
+    soon: true,
   },
   {
     icon: GitBranch,
     title: "Smart Routing",
     description:
       "Automatically route to cheaper models when teams approach budget limits. Save 30-70% without changing code.",
+    soon: true,
   },
   {
     icon: Shield,
     title: "Budget Enforcement",
     description:
       "Set per-team and per-app budgets with hard limits. Block or warn before overspending — at the proxy level.",
+    soon: true,
   },
 ];
 
@@ -481,8 +484,15 @@ export default function Home() {
                   className="card-glow group relative rounded-2xl backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] p-6 hover:border-blue-500/20 transition-all duration-300"
                 >
                   <div className="flex flex-col gap-3">
-                    <div className="flex-shrink-0 flex items-center justify-center size-10 rounded-lg bg-blue-500/10 ring-1 ring-blue-500/20">
-                      <Icon className="size-5 text-blue-400" />
+                    <div className="flex items-center gap-3">
+                      <div className="flex-shrink-0 flex items-center justify-center size-10 rounded-lg bg-blue-500/10 ring-1 ring-blue-500/20">
+                        <Icon className="size-5 text-blue-400" />
+                      </div>
+                      {feature.soon && (
+                        <span className="text-[10px] uppercase tracking-wider font-medium text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full">
+                          Coming Soon
+                        </span>
+                      )}
                     </div>
                     <div>
                       <h3 className="text-base font-semibold text-white mb-1.5">
@@ -507,7 +517,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-6">
           <motion.div {...fadeUp} className="text-center mb-16">
             <h2 className="text-3xl lg:text-5xl font-bold tracking-tight">
-              One line of code.{" "}
+              Just change the base URL.{" "}
               <span className="bg-gradient-to-r from-sky-300 to-blue-400 bg-clip-text text-transparent">
                 Full visibility.
               </span>
@@ -541,15 +551,23 @@ export default function Home() {
               <pre className="p-6 text-sm leading-relaxed overflow-x-auto font-mono">
                 <code>
                   <span className="text-blue-400">import</span>
-                  <span className="text-gray-300"> modeltrack  </span>
-                  <span className="text-gray-600">
-                    {"# That's it. All LLM calls are now tracked."}
-                  </span>
+                  <span className="text-gray-300"> anthropic</span>
                   {"\n\n"}
-                  <span className="text-gray-300">client = </span>
-                  <span className="text-blue-400">anthropic</span>
-                  <span className="text-gray-300">.Anthropic()</span>
+                  <span className="text-gray-600">
+                    {"# Point your SDK at ModelTrack — everything else stays the same"}
+                  </span>
                   {"\n"}
+                  <span className="text-gray-300">client = anthropic.</span>
+                  <span className="text-blue-400">Anthropic</span>
+                  <span className="text-gray-300">(</span>
+                  {"\n"}
+                  <span className="text-gray-300">{"    "}base_url=</span>
+                  <span className="text-green-400">
+                    {'"https://proxy.modeltrack.ai/ws/YOUR_WORKSPACE/v1"'}
+                  </span>
+                  {"\n"}
+                  <span className="text-gray-300">)</span>
+                  {"\n\n"}
                   <span className="text-gray-300">response = client.</span>
                   <span className="text-yellow-300">messages</span>
                   <span className="text-gray-300">.</span>
@@ -576,8 +594,7 @@ export default function Home() {
                   <span className="text-gray-300">)</span>
                   {"\n"}
                   <span className="text-gray-600">
-                    # ModelTrack automatically tracks: tokens, cost, latency,
-                    team, feature
+                    {"# ModelTrack tracks: tokens, cost, latency, team, feature"}
                   </span>
                 </code>
               </pre>
@@ -588,8 +605,8 @@ export default function Home() {
             {...stagger(2)}
             className="mt-10 text-center text-sm text-gray-500 max-w-xl mx-auto"
           >
-            Or point any LLM SDK at the ModelTrack proxy. Works with Anthropic,
-            OpenAI, AWS Bedrock, and Azure OpenAI.
+            Works with any LLM SDK — Anthropic, OpenAI, AWS Bedrock, Azure OpenAI.
+            No code changes beyond the base URL.
           </motion.p>
         </div>
       </section>
@@ -610,29 +627,6 @@ export default function Home() {
 
           <motion.div {...stagger(1)}>
             <Marquee pauseOnHover className="[--duration:25s] [--gap:1rem]">
-              {providers.map((provider) => (
-                <div
-                  key={provider.name}
-                  className={`card-glow inline-flex items-center gap-3 rounded-xl border px-6 py-4 backdrop-blur-sm ${
-                    provider.soon
-                      ? "border-white/[0.05] bg-white/[0.01] text-gray-600"
-                      : "border-white/[0.08] bg-white/[0.03] text-gray-300"
-                  }`}
-                >
-                  <span className="text-sm font-medium">{provider.name}</span>
-                  {provider.soon && (
-                    <span className="text-[10px] uppercase tracking-wider text-gray-600 bg-white/[0.05] px-2 py-0.5 rounded-full">
-                      soon
-                    </span>
-                  )}
-                </div>
-              ))}
-            </Marquee>
-            <Marquee
-              reverse
-              pauseOnHover
-              className="[--duration:25s] [--gap:1rem] mt-4"
-            >
               {providers.map((provider) => (
                 <div
                   key={provider.name}
@@ -674,9 +668,9 @@ export default function Home() {
               <motion.div
                 key={plan.name}
                 {...stagger(i)}
-                className={`card-glow relative rounded-2xl border p-8 flex flex-col backdrop-blur-xl transition-all duration-300 ${
+                className={`card-glow relative rounded-2xl border p-8 flex flex-col backdrop-blur-xl transition-all duration-300 overflow-visible ${
                   plan.highlighted
-                    ? "border-blue-500/30 bg-blue-500/[0.04] scale-[1.02]"
+                    ? "border-blue-500/30 bg-blue-500/[0.04] scale-[1.02] mt-4"
                     : "border-white/[0.08] bg-white/[0.03]"
                 }`}
               >
@@ -767,7 +761,7 @@ export default function Home() {
           >
             No credit card required. Free forever for small teams.
           </motion.p>
-          <motion.div {...stagger(2)} className="mt-10">
+          <motion.div {...stagger(2)} className="mt-10 flex justify-center">
             <Link href="https://app.modeltrack.ai/signup">
               <ShimmerButton
                 shimmerColor="#93c5fd"
