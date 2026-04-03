@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import {
   PieChart,
   Pie,
@@ -8,17 +7,19 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts';
+import { useAnimatedNumber, useMounted } from '@/lib/hooks';
+import { CHART_COLORS } from '@/lib/colors';
 
 /* ------------------------------------------------------------------ */
 /*  Data                                                               */
 /* ------------------------------------------------------------------ */
 
 const MODEL_DATA = [
-  { name: 'Claude Opus', pct: 38, color: '#3B82F6' },
-  { name: 'Claude Sonnet', pct: 35, color: '#6366F1' },
-  { name: 'GPT-4o', pct: 15, color: '#EF4444' },
-  { name: 'GPT-4.1', pct: 7, color: '#F59E0B' },
-  { name: 'Others', pct: 5, color: '#22C55E' },
+  { name: 'Claude Opus', pct: 38, color: CHART_COLORS[0] },
+  { name: 'Claude Sonnet', pct: 35, color: CHART_COLORS[1] },
+  { name: 'GPT-4o', pct: 15, color: CHART_COLORS[2] },
+  { name: 'GPT-4.1', pct: 7, color: CHART_COLORS[3] },
+  { name: 'Others', pct: 5, color: CHART_COLORS[4] },
 ];
 
 const SUMMARY = [
@@ -27,38 +28,6 @@ const SUMMARY = [
   { label: 'Total Tokens', value: 151200000, format: 'short' },
   { label: 'Total Cost', value: 933.94, format: 'currency' },
 ];
-
-/* ------------------------------------------------------------------ */
-/*  Animated number hook                                               */
-/* ------------------------------------------------------------------ */
-
-function useAnimatedNumber(target: number, duration = 1200) {
-  const [value, setValue] = useState(0);
-  const ref = useRef<number | null>(null);
-
-  useEffect(() => {
-    const start = performance.now();
-    function tick(now: number) {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setValue(target * eased);
-      if (progress < 1) {
-        ref.current = requestAnimationFrame(tick);
-      }
-    }
-    ref.current = requestAnimationFrame(tick);
-    return () => {
-      if (ref.current) cancelAnimationFrame(ref.current);
-    };
-  }, [target, duration]);
-
-  return value;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Format helpers                                                     */
-/* ------------------------------------------------------------------ */
 
 function formatShort(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -70,12 +39,10 @@ function AnimatedMetric({
   label,
   target,
   format,
-  delay = 0,
 }: {
   label: string;
   target: number;
   format: string;
-  delay?: number;
 }) {
   const animated = useAnimatedNumber(target);
 
@@ -89,10 +56,7 @@ function AnimatedMetric({
   }
 
   return (
-    <div
-      className="bg-[#141414] border border-[#262626] rounded-lg p-3 hover:border-[#333] transition-colors"
-      style={{ animationDelay: `${delay}ms` }}
-    >
+    <div className="bg-[#141414] border border-[#262626] rounded-lg p-3 hover:border-[#333] transition-colors">
       <div className="text-[10px] uppercase tracking-wider text-[#525252] mb-1">
         {label}
       </div>
@@ -137,11 +101,7 @@ function PieTooltipContent({
 /* ------------------------------------------------------------------ */
 
 export default function ModelsPreview() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useMounted();
 
   return (
     <div className="relative rounded-xl border border-[#1a1a1a] overflow-hidden bg-[#0a0a0a] shadow-xl shadow-blue-500/5 max-w-[560px]">
@@ -156,13 +116,12 @@ export default function ModelsPreview() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-4 gap-2">
-          {SUMMARY.map((item, i) => (
+          {SUMMARY.map((item) => (
             <AnimatedMetric
               key={item.label}
               label={item.label}
               target={item.value}
               format={item.format}
-              delay={i * 100}
             />
           ))}
         </div>

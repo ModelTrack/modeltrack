@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useAnimatedNumber, useMounted } from '@/lib/hooks';
+import { CHART_COLORS } from '@/lib/colors';
 import {
   LineChart,
   Line,
@@ -88,42 +89,6 @@ const MOCK_DATA = {
   ],
 };
 
-const RANK_COLORS = [
-  '#3B82F6', // blue
-  '#6366F1', // indigo
-  '#EF4444', // red
-  '#F59E0B', // amber
-  '#22C55E', // green
-];
-
-/* ------------------------------------------------------------------ */
-/*  Animated number hook                                               */
-/* ------------------------------------------------------------------ */
-
-function useAnimatedNumber(target: number, duration = 1200) {
-  const [value, setValue] = useState(0);
-  const ref = useRef<number | null>(null);
-
-  useEffect(() => {
-    const start = performance.now();
-    function tick(now: number) {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      // ease-out cubic
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setValue(Math.round(target * eased));
-      if (progress < 1) {
-        ref.current = requestAnimationFrame(tick);
-      }
-    }
-    ref.current = requestAnimationFrame(tick);
-    return () => {
-      if (ref.current) cancelAnimationFrame(ref.current);
-    };
-  }, [target, duration]);
-
-  return value;
-}
 
 /* ------------------------------------------------------------------ */
 /*  Sub-components                                                     */
@@ -143,19 +108,14 @@ function MetricCard({
   value,
   subtitle,
   isCurrency = false,
-  delay = 0,
 }: {
   label: string;
   value: number | string;
   subtitle?: string;
   isCurrency?: boolean;
-  delay?: number;
 }) {
   return (
-    <div
-      className="bg-[#141414] border border-[#262626] rounded-lg p-3 hover:border-[#333] transition-colors"
-      style={{ animationDelay: `${delay}ms` }}
-    >
+    <div className="bg-[#141414] border border-[#262626] rounded-lg p-3 hover:border-[#333] transition-colors">
       <div className="text-[10px] uppercase tracking-wider text-[#525252] mb-1">
         {label}
       </div>
@@ -225,11 +185,7 @@ function ChartTooltipContent({ active, payload, label }: { active?: boolean; pay
 /* ------------------------------------------------------------------ */
 
 export default function DashboardPreview() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useMounted();
 
   return (
     <div className="relative rounded-xl border border-[#1a1a1a] overflow-hidden bg-[#0a0a0a] shadow-2xl shadow-blue-500/5 max-w-[900px] mx-auto">
@@ -282,33 +238,33 @@ export default function DashboardPreview() {
               value={MOCK_DATA.totalSpend}
               subtitle="Last 30 days"
               isCurrency
-              delay={0}
+
             />
             <MetricCard
               label="Spend Today"
               value={MOCK_DATA.spendToday}
               subtitle="+12.3% vs yesterday"
               isCurrency
-              delay={100}
+
             />
             <MetricCard
               label="Avg Daily"
               value={MOCK_DATA.avgDaily}
               subtitle="30-day average"
               isCurrency
-              delay={200}
+
             />
             <MetricCard
               label="Top Model"
               value={MOCK_DATA.topModel}
               subtitle={`$${MOCK_DATA.topModelSpend.toLocaleString()} spent`}
-              delay={300}
+
             />
             <MetricCard
               label="Top Team"
               value={MOCK_DATA.topTeam}
               subtitle={`$${MOCK_DATA.topTeamSpend.toLocaleString()} spent`}
-              delay={400}
+
             />
           </div>
 
@@ -390,7 +346,7 @@ export default function DashboardPreview() {
               </div>
               <div className="space-y-2.5">
                 {MOCK_DATA.topModels.map((model, idx) => {
-                  const color = RANK_COLORS[idx];
+                  const color = CHART_COLORS[idx];
                   return (
                     <div key={model.name}>
                       <div className="flex items-center gap-2">
@@ -441,7 +397,7 @@ export default function DashboardPreview() {
               </div>
               <div className="space-y-2.5">
                 {MOCK_DATA.topTeams.map((team, idx) => {
-                  const color = RANK_COLORS[idx];
+                  const color = CHART_COLORS[idx];
                   const perMember =
                     team.members > 0
                       ? Math.round(team.spend / team.members)

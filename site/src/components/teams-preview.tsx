@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -10,6 +9,8 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
+import { useMounted } from '@/lib/hooks';
+import { CHART_COLORS } from '@/lib/colors';
 
 /* ------------------------------------------------------------------ */
 /*  Data                                                               */
@@ -23,7 +24,6 @@ const TEAM_DATA = [
   { name: 'Marketing', spend: 1000, requests: '0.8k' },
 ];
 
-const BAR_COLORS = ['#3B82F6', '#6366F1', '#EF4444', '#F59E0B', '#22C55E'];
 
 /* ------------------------------------------------------------------ */
 /*  Custom Tooltip                                                     */
@@ -55,11 +55,7 @@ function BarTooltipContent({
 /* ------------------------------------------------------------------ */
 
 export default function TeamsPreview() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useMounted();
 
   return (
     <div className="relative rounded-xl border border-[#1a1a1a] overflow-hidden bg-[#0a0a0a] shadow-xl shadow-blue-500/5 max-w-[560px]">
@@ -118,7 +114,7 @@ export default function TeamsPreview() {
                     animationDuration={1000}
                   >
                     {TEAM_DATA.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={BAR_COLORS[index]} />
+                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index]} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -147,7 +143,7 @@ export default function TeamsPreview() {
                     <div className="flex items-center gap-2">
                       <span
                         className="w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: BAR_COLORS[i] }}
+                        style={{ backgroundColor: CHART_COLORS[i] }}
                       />
                       <span className="text-[11px] text-white font-medium">
                         {team.name}
