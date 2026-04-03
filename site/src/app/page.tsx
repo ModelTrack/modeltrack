@@ -12,9 +12,12 @@ import {
   Github,
   Check,
   Sparkles,
+  BarChart3,
+  Users,
+  Layers,
 } from "lucide-react";
 import Link from "next/link";
-import { Particles } from "@/components/ui/particles";
+import Image from "next/image";
 import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { NumberTicker } from "@/components/ui/number-ticker";
@@ -33,7 +36,6 @@ const fadeUp = {
   transition: { duration: 0.5, ease: "easeOut" as const },
 };
 
-/* Hero/above-the-fold variant: animates immediately on mount */
 const fadeUpImmediate = {
   initial: { opacity: 0, y: 30, filter: "blur(4px)" },
   animate: { opacity: 1, y: 0, filter: "blur(0px)" },
@@ -66,12 +68,57 @@ const navLinks = [
   { label: "GitHub", href: "https://github.com/ModelTrack/modeltrack" },
 ];
 
-const features = [
+const screenshotFeatures = [
   {
     icon: Activity,
-    title: "Cost Tracking",
+    title: "Track every token across every provider",
     description:
-      "Track every token across Anthropic, OpenAI, Bedrock, and Azure. Per-request granularity with team, app, and feature attribution.",
+      "See your total AI spend, per-request costs, and 30-day trends across Anthropic, OpenAI, Bedrock, and Azure — all in one dashboard.",
+    bullets: [
+      "Real-time cost tracking per request",
+      "30-day trend charts with daily granularity",
+      "Ranked breakdown by model and team",
+    ],
+    image: "/dashboard-overview.png",
+    imageAlt: "ModelTrack overview dashboard showing cost metrics, trend chart, and ranked models",
+    layout: "text-left" as const,
+  },
+  {
+    icon: BarChart3,
+    title: "See exactly where your spend goes",
+    description:
+      "Drill into model-level spend with donut charts and sortable tables. Know which models cost the most and optimize accordingly.",
+    bullets: [
+      "Per-model cost breakdown with donut visualization",
+      "Sortable model table with token counts",
+      "Identify expensive models at a glance",
+    ],
+    image: "/dashboard-models.png",
+    imageAlt: "ModelTrack models page showing donut chart and model cost table",
+    layout: "text-right" as const,
+  },
+  {
+    icon: Users,
+    title: "Cost intelligence per feature and team",
+    description:
+      "Attribute AI costs to specific teams and features. Know exactly who is spending what and enforce budgets at the team level.",
+    bullets: [
+      "Per-team spend with bar chart visualization",
+      "Feature-level cost attribution",
+      "Budget enforcement per team",
+    ],
+    image: "/dashboard-teams.png",
+    imageAlt: "ModelTrack teams page showing team spend bar chart and table",
+    layout: "text-left" as const,
+  },
+];
+
+const smallFeatures = [
+  {
+    icon: Zap,
+    title: "Response Caching",
+    description:
+      "Cache identical requests to eliminate duplicate API calls. 20-50% cost reduction with zero latency overhead.",
   },
   {
     icon: GitBranch,
@@ -80,28 +127,10 @@ const features = [
       "Automatically route to cheaper models when teams approach budget limits. Save 30-70% without changing code.",
   },
   {
-    icon: Zap,
-    title: "Response Caching",
-    description:
-      "Cache identical requests to eliminate duplicate API calls. 20-50% cost reduction with zero latency overhead.",
-  },
-  {
     icon: Shield,
     title: "Budget Enforcement",
     description:
       "Set per-team and per-app budgets with hard limits. Block or warn before overspending — at the proxy level.",
-  },
-  {
-    icon: TrendingUp,
-    title: "Cost Forecasting",
-    description:
-      "Predict next month's AI spend with confidence intervals. Scenario modeling for traffic changes and model migrations.",
-  },
-  {
-    icon: FileText,
-    title: "Executive Reports",
-    description:
-      "Auto-generated weekly and monthly reports with recommendations. Export CSV, schedule to Slack.",
   },
 ];
 
@@ -226,7 +255,7 @@ export default function Home() {
             href="/"
             className="flex items-center gap-0 text-lg font-bold"
           >
-            <span className="text-emerald-400">Model</span>
+            <span className="text-blue-500">Model</span>
             <span className="text-white">Track</span>
           </Link>
 
@@ -244,7 +273,7 @@ export default function Home() {
 
           <Link
             href="https://app.modeltrack.ai/signup"
-            className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-5 py-2 text-sm font-medium text-black hover:bg-emerald-400 transition-all duration-300 hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+            className="inline-flex items-center justify-center rounded-full bg-blue-500 px-5 py-2 text-sm font-medium text-white hover:bg-blue-400 transition-all duration-300 hover:shadow-[0_0_20px_rgba(59,130,246,0.3)]"
           >
             Get Started
           </Link>
@@ -254,31 +283,21 @@ export default function Home() {
       {/* ============================================================ */}
       {/*  B. Hero Section                                              */}
       {/* ============================================================ */}
-      <section className="relative pt-40 pb-28 overflow-hidden">
-        {/* Particles background */}
-        <Particles
-          className="absolute inset-0"
-          quantity={30}
-          color="#10b981"
-          size={0.6}
-          staticity={40}
-          ease={60}
-        />
-
-        {/* Radial gradient glow */}
+      <section className="relative pt-40 pb-20 overflow-hidden">
+        {/* Subtle radial gradient background (replaces heavy particles) */}
         <div
           className="absolute inset-0 pointer-events-none"
           aria-hidden="true"
         >
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[700px] rounded-full bg-emerald-500/[0.06] blur-[140px]" />
-          <div className="absolute top-1/3 left-1/3 w-[400px] h-[400px] rounded-full bg-indigo-500/[0.03] blur-[120px]" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[700px] rounded-full bg-blue-500/[0.06] blur-[140px]" />
+          <div className="absolute top-1/3 left-1/3 w-[400px] h-[400px] rounded-full bg-indigo-500/[0.04] blur-[120px]" />
         </div>
 
         <div className="relative max-w-6xl mx-auto px-6 text-center">
           {/* Shiny badge */}
           <motion.div {...staggerImmediate(0)} className="flex justify-center mb-8">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5 backdrop-blur-sm">
-              <Sparkles className="size-3.5 text-emerald-400" />
+              <Sparkles className="size-3.5 text-blue-400" />
               <AnimatedShinyText className="text-sm">
                 Open Source — Now in Beta
               </AnimatedShinyText>
@@ -291,7 +310,7 @@ export default function Home() {
             className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.08]"
           >
             Know exactly what{" "}
-            <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-blue-400 via-sky-300 to-blue-400 bg-clip-text text-transparent">
               your AI costs
             </span>
           </motion.h1>
@@ -310,11 +329,11 @@ export default function Home() {
           >
             <Link href="https://app.modeltrack.ai/signup">
               <ShimmerButton
-                shimmerColor="#34d399"
+                shimmerColor="#93c5fd"
                 shimmerSize="0.05em"
-                background="rgba(16,185,129,1)"
+                background="rgba(59,130,246,1)"
                 borderRadius="12px"
-                className="px-7 py-3.5 text-sm font-semibold text-black"
+                className="px-7 py-3.5 text-sm font-semibold text-white"
               >
                 <span className="flex items-center gap-2">
                   Get Started Free
@@ -330,6 +349,27 @@ export default function Home() {
               <Github className="size-4" />
               View on GitHub
             </Link>
+          </motion.div>
+
+          {/* Hero Dashboard Screenshot */}
+          <motion.div
+            {...staggerImmediate(4)}
+            className="mt-16 relative max-w-5xl mx-auto"
+          >
+            {/* Glow behind screenshot */}
+            <div className="absolute -inset-4 bg-gradient-to-r from-blue-500/10 via-transparent to-blue-500/10 blur-3xl pointer-events-none" />
+            <div className="absolute -inset-8 bg-blue-500/[0.04] blur-[60px] rounded-3xl pointer-events-none" />
+
+            <div className="relative rounded-xl border border-white/10 overflow-hidden shadow-2xl shadow-blue-500/5">
+              <Image
+                src="/dashboard-overview.png"
+                alt="ModelTrack Dashboard — overview with cost metrics, trend charts, and model rankings"
+                width={1200}
+                height={800}
+                className="w-full h-auto"
+                priority
+              />
+            </div>
           </motion.div>
         </div>
       </section>
@@ -371,7 +411,7 @@ export default function Home() {
               </span>
             </div>
             <div className="flex flex-col items-center gap-1">
-              <span className="text-2xl md:text-3xl font-bold text-emerald-400 tabular-nums">
+              <span className="text-2xl md:text-3xl font-bold text-blue-400 tabular-nums">
                 Live
               </span>
               <span className="text-sm text-gray-500 font-medium">
@@ -383,10 +423,9 @@ export default function Home() {
       </section>
 
       {/* ============================================================ */}
-      {/*  D. Features Bento Grid                                       */}
+      {/*  D. Features — Product Screenshots                            */}
       {/* ============================================================ */}
       <section id="features" className="relative py-32 scroll-mt-24">
-        {/* Dot pattern background */}
         <DotPattern
           width={24}
           height={24}
@@ -395,45 +434,65 @@ export default function Home() {
         />
 
         <div className="relative max-w-6xl mx-auto px-6">
-          <motion.div {...fadeUp} className="text-center mb-16">
+          <motion.div {...fadeUp} className="text-center mb-20">
             <h2 className="text-3xl lg:text-5xl font-bold tracking-tight">
               Everything you need to{" "}
-              <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-400 to-sky-300 bg-clip-text text-transparent">
                 control AI costs
               </span>
             </h2>
           </motion.div>
 
-          {/* Row 1: 2 large cards */}
-          <div className="grid md:grid-cols-2 gap-4 mb-4">
-            {features.slice(0, 2).map((feature, i) => {
+          {/* Screenshot feature rows */}
+          <div className="space-y-24">
+            {screenshotFeatures.map((feature, idx) => {
               const Icon = feature.icon;
+              const isTextLeft = feature.layout === "text-left";
               return (
                 <motion.div
                   key={feature.title}
-                  {...stagger(i)}
-                  className="card-glow group relative rounded-2xl backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] p-8 hover:border-emerald-500/20 transition-all duration-300 min-h-[200px]"
+                  {...stagger(idx)}
+                  className={`grid lg:grid-cols-2 gap-12 items-center ${
+                    !isTextLeft ? "lg:grid-flow-dense" : ""
+                  }`}
                 >
-                  {i === 0 && (
-                    <BorderBeam
-                      size={120}
-                      duration={8}
-                      colorFrom="#10b981"
-                      colorTo="#6366f1"
-                      borderWidth={1}
-                    />
-                  )}
-                  <div className="flex items-start gap-4">
-                    <div className="flex-shrink-0 flex items-center justify-center size-12 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/20">
-                      <Icon className="size-6 text-emerald-400" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-2">
+                  {/* Text side */}
+                  <div className={!isTextLeft ? "lg:col-start-2" : ""}>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="flex-shrink-0 flex items-center justify-center size-10 rounded-lg bg-blue-500/10 ring-1 ring-blue-500/20">
+                        <Icon className="size-5 text-blue-400" />
+                      </div>
+                      <h3 className="text-xl lg:text-2xl font-semibold text-white">
                         {feature.title}
                       </h3>
-                      <p className="text-sm text-gray-400 leading-relaxed">
-                        {feature.description}
-                      </p>
+                    </div>
+                    <p className="text-gray-400 leading-relaxed mb-5">
+                      {feature.description}
+                    </p>
+                    <ul className="space-y-2.5">
+                      {feature.bullets.map((bullet) => (
+                        <li
+                          key={bullet}
+                          className="flex items-start gap-2.5 text-sm text-gray-400"
+                        >
+                          <Check className="size-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                          {bullet}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Screenshot side */}
+                  <div className={`relative ${!isTextLeft ? "lg:col-start-1" : ""}`}>
+                    <div className="absolute -inset-4 bg-gradient-to-r from-blue-500/10 via-transparent to-blue-500/10 blur-3xl pointer-events-none" />
+                    <div className="relative rounded-xl border border-white/10 overflow-hidden shadow-2xl shadow-blue-500/5">
+                      <Image
+                        src={feature.image}
+                        alt={feature.imageAlt}
+                        width={1200}
+                        height={800}
+                        className="w-full h-auto"
+                      />
                     </div>
                   </div>
                 </motion.div>
@@ -441,19 +500,19 @@ export default function Home() {
             })}
           </div>
 
-          {/* Row 2: 3 smaller cards */}
-          <div className="grid md:grid-cols-3 gap-4 mb-4">
-            {features.slice(2, 5).map((feature, i) => {
+          {/* Smaller feature cards (no screenshots) */}
+          <div className="grid md:grid-cols-3 gap-4 mt-24">
+            {smallFeatures.map((feature, i) => {
               const Icon = feature.icon;
               return (
                 <motion.div
                   key={feature.title}
-                  {...stagger(i + 2)}
-                  className="card-glow group relative rounded-2xl backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] p-6 hover:border-emerald-500/20 transition-all duration-300"
+                  {...stagger(i)}
+                  className="card-glow group relative rounded-2xl backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] p-6 hover:border-blue-500/20 transition-all duration-300"
                 >
                   <div className="flex flex-col gap-3">
-                    <div className="flex-shrink-0 flex items-center justify-center size-10 rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/20">
-                      <Icon className="size-5 text-emerald-400" />
+                    <div className="flex-shrink-0 flex items-center justify-center size-10 rounded-lg bg-blue-500/10 ring-1 ring-blue-500/20">
+                      <Icon className="size-5 text-blue-400" />
                     </div>
                     <div>
                       <h3 className="text-base font-semibold text-white mb-1.5">
@@ -468,32 +527,6 @@ export default function Home() {
               );
             })}
           </div>
-
-          {/* Row 3: 1 wide card */}
-          {(() => {
-            const feature = features[5];
-            const Icon = feature.icon;
-            return (
-              <motion.div
-                {...stagger(5)}
-                className="card-glow group relative rounded-2xl backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] p-8 hover:border-emerald-500/20 transition-all duration-300"
-              >
-                <div className="flex items-start gap-4 max-w-2xl mx-auto">
-                  <div className="flex-shrink-0 flex items-center justify-center size-12 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/20">
-                    <Icon className="size-6 text-emerald-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-2">
-                      {feature.title}
-                    </h3>
-                    <p className="text-sm text-gray-400 leading-relaxed">
-                      {feature.description}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })()}
         </div>
       </section>
 
@@ -505,7 +538,7 @@ export default function Home() {
           <motion.div {...fadeUp} className="text-center mb-16">
             <h2 className="text-3xl lg:text-5xl font-bold tracking-tight">
               One line of code.{" "}
-              <span className="bg-gradient-to-r from-teal-300 to-emerald-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-sky-300 to-blue-400 bg-clip-text text-transparent">
                 Full visibility.
               </span>
             </h2>
@@ -516,14 +549,14 @@ export default function Home() {
             className="relative max-w-3xl mx-auto"
           >
             {/* Glow behind terminal */}
-            <div className="absolute -inset-4 rounded-3xl bg-emerald-500/[0.04] blur-2xl pointer-events-none" />
+            <div className="absolute -inset-4 rounded-3xl bg-blue-500/[0.04] blur-2xl pointer-events-none" />
             <div className="absolute -inset-8 rounded-3xl bg-indigo-500/[0.02] blur-3xl pointer-events-none" />
 
             <div className="relative rounded-2xl border border-white/[0.08] bg-[#0c0c14] overflow-hidden">
               <BorderBeam
                 size={150}
                 duration={10}
-                colorFrom="#10b981"
+                colorFrom="#3B82F6"
                 colorTo="#818cf8"
                 borderWidth={1}
               />
@@ -544,7 +577,7 @@ export default function Home() {
                   </span>
                   {"\n\n"}
                   <span className="text-gray-300">client = </span>
-                  <span className="text-emerald-400">anthropic</span>
+                  <span className="text-blue-400">anthropic</span>
                   <span className="text-gray-300">.Anthropic()</span>
                   {"\n"}
                   <span className="text-gray-300">response = client.</span>
@@ -599,7 +632,7 @@ export default function Home() {
           <motion.div {...fadeUp} className="text-center mb-12">
             <h2 className="text-3xl lg:text-5xl font-bold tracking-tight">
               Works with{" "}
-              <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-400 to-sky-300 bg-clip-text text-transparent">
                 every LLM provider
               </span>
             </h2>
@@ -673,7 +706,7 @@ export default function Home() {
                 {...stagger(i)}
                 className={`card-glow relative rounded-2xl border p-8 flex flex-col backdrop-blur-xl transition-all duration-300 ${
                   plan.highlighted
-                    ? "border-emerald-500/30 bg-emerald-500/[0.04] scale-[1.02]"
+                    ? "border-blue-500/30 bg-blue-500/[0.04] scale-[1.02]"
                     : "border-white/[0.08] bg-white/[0.03]"
                 }`}
               >
@@ -682,13 +715,13 @@ export default function Home() {
                     <BorderBeam
                       size={100}
                       duration={8}
-                      colorFrom="#10b981"
+                      colorFrom="#3B82F6"
                       colorTo="#6366f1"
                       borderWidth={1}
                     />
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 backdrop-blur-sm">
-                        <AnimatedShinyText className="text-xs font-semibold text-emerald-300">
+                      <div className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 backdrop-blur-sm">
+                        <AnimatedShinyText className="text-xs font-semibold text-blue-300">
                           Most Popular
                         </AnimatedShinyText>
                       </div>
@@ -717,7 +750,7 @@ export default function Home() {
                       key={feature}
                       className="flex items-start gap-2.5 text-sm text-gray-400"
                     >
-                      <Check className="size-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                      <Check className="size-4 text-blue-400 mt-0.5 flex-shrink-0" />
                       {feature}
                     </li>
                   ))}
@@ -727,7 +760,7 @@ export default function Home() {
                   href="https://app.modeltrack.ai/signup"
                   className={`inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300 ${
                     plan.ctaStyle === "solid"
-                      ? "bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-[0_0_24px_rgba(16,185,129,0.3)]"
+                      ? "bg-blue-500 text-white hover:bg-blue-400 hover:shadow-[0_0_24px_rgba(59,130,246,0.3)]"
                       : "border border-white/[0.08] text-gray-300 hover:bg-white/[0.06] hover:text-white hover:border-white/[0.12]"
                   }`}
                 >
@@ -745,16 +778,8 @@ export default function Home() {
       <section className="relative py-32 border-t border-white/[0.06] overflow-hidden">
         {/* Background glow */}
         <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-emerald-500/[0.05] blur-[120px]" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-blue-500/[0.05] blur-[120px]" />
         </div>
-        <Particles
-          className="absolute inset-0"
-          quantity={20}
-          color="#10b981"
-          size={0.4}
-          staticity={60}
-          ease={80}
-        />
 
         <div className="relative max-w-6xl mx-auto px-6 text-center">
           <motion.h2
@@ -762,7 +787,7 @@ export default function Home() {
             className="text-3xl lg:text-5xl font-bold tracking-tight"
           >
             Start tracking your AI costs{" "}
-            <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-blue-400 to-sky-300 bg-clip-text text-transparent">
               in 5 minutes
             </span>
           </motion.h2>
@@ -775,11 +800,11 @@ export default function Home() {
           <motion.div {...stagger(2)} className="mt-10">
             <Link href="https://app.modeltrack.ai/signup">
               <ShimmerButton
-                shimmerColor="#34d399"
+                shimmerColor="#93c5fd"
                 shimmerSize="0.05em"
-                background="rgba(16,185,129,1)"
+                background="rgba(59,130,246,1)"
                 borderRadius="12px"
-                className="px-8 py-4 text-base font-semibold text-black"
+                className="px-8 py-4 text-base font-semibold text-white"
               >
                 <span className="flex items-center gap-2">
                   Get Started Free
@@ -796,7 +821,7 @@ export default function Home() {
       {/* ============================================================ */}
       <footer className="relative border-t border-white/[0.06] py-16">
         {/* Gradient top border */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent" />
 
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16">
@@ -830,7 +855,7 @@ export default function Home() {
                 href="/"
                 className="flex items-center gap-0 text-sm font-bold"
               >
-                <span className="text-emerald-400">Model</span>
+                <span className="text-blue-500">Model</span>
                 <span className="text-white">Track</span>
               </Link>
               <span className="text-xs text-gray-600">
