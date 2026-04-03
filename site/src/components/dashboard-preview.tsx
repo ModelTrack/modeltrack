@@ -14,11 +14,15 @@ import {
 } from 'recharts';
 import {
   LayoutDashboard,
-  Cpu,
+  Box,
+  Layers,
   Users,
-  Settings,
-  Bell,
   Activity,
+  TrendingUp,
+  Calculator,
+  FileText,
+  Bell,
+  Settings,
 } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -172,13 +176,32 @@ function MetricCard({
   );
 }
 
-const sidebarItems = [
-  { icon: LayoutDashboard, label: 'Overview', active: true },
-  { icon: Cpu, label: 'Models', active: false },
-  { icon: Users, label: 'Teams', active: false },
-  { icon: Activity, label: 'Requests', active: false },
-  { icon: Bell, label: 'Alerts', active: false },
-  { icon: Settings, label: 'Settings', active: false },
+const sidebarGroups = [
+  {
+    label: 'MONITOR',
+    items: [
+      { icon: LayoutDashboard, label: 'Overview', active: true },
+      { icon: Box, label: 'Models', active: false },
+      { icon: Layers, label: 'Features', active: false },
+      { icon: Users, label: 'Teams', active: false },
+      { icon: Activity, label: 'Sessions', active: false },
+    ],
+  },
+  {
+    label: 'PLAN',
+    items: [
+      { icon: TrendingUp, label: 'Forecast', active: false },
+      { icon: Calculator, label: 'Estimator', active: false },
+      { icon: FileText, label: 'Reports', active: false },
+    ],
+  },
+  {
+    label: 'MANAGE',
+    items: [
+      { icon: Bell, label: 'Alerts', active: false },
+      { icon: Settings, label: 'Settings', active: false },
+    ],
+  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -217,25 +240,29 @@ export default function DashboardPreview() {
             <span className="text-blue-500">Model</span>
             <span className="text-white">Track</span>
           </div>
-          <div className="text-[10px] uppercase tracking-wider text-[#525252] px-2 mb-1">
-            Monitor
-          </div>
-          {sidebarItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <div
-                key={item.label}
-                className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs ${
-                  item.active
-                    ? 'bg-[#141414] text-blue-500'
-                    : 'text-[#a3a3a3]'
-                }`}
-              >
-                <Icon size={14} />
-                {item.label}
+          {sidebarGroups.map((group) => (
+            <div key={group.label} className="mb-2">
+              <div className="text-[10px] uppercase tracking-[0.15em] text-[#525252] px-2 mb-1 font-medium">
+                {group.label}
               </div>
-            );
-          })}
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.label}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs ${
+                      item.active
+                        ? 'bg-[#141414] text-blue-500 border-l-2 border-blue-400'
+                        : 'text-[#a3a3a3]'
+                    }`}
+                  >
+                    <Icon size={14} />
+                    {item.label}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
 
         {/* Main Content */}

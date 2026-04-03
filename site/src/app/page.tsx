@@ -2,23 +2,20 @@
 
 import { motion } from "framer-motion";
 import {
-  Activity,
   GitBranch,
   Zap,
   Shield,
-  TrendingUp,
-  FileText,
   ArrowRight,
   Github,
   Check,
   Sparkles,
   BarChart3,
   Users,
-  Layers,
 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import DashboardPreview from "@/components/dashboard-preview";
+import ModelsPreview from "@/components/models-preview";
+import TeamsPreview from "@/components/teams-preview";
 import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { NumberTicker } from "@/components/ui/number-ticker";
@@ -71,32 +68,17 @@ const navLinks = [
 
 const screenshotFeatures = [
   {
-    icon: Activity,
-    title: "Track every token across every provider",
-    description:
-      "See your total AI spend, per-request costs, and 30-day trends across Anthropic, OpenAI, Bedrock, and Azure — all in one dashboard.",
-    bullets: [
-      "Real-time cost tracking per request",
-      "30-day trend charts with daily granularity",
-      "Ranked breakdown by model and team",
-    ],
-    image: "/dashboard-overview.png",
-    imageAlt: "ModelTrack overview dashboard showing cost metrics, trend chart, and ranked models",
-    layout: "text-left" as const,
-  },
-  {
     icon: BarChart3,
     title: "See exactly where your spend goes",
     description:
-      "Drill into model-level spend with donut charts and sortable tables. Know which models cost the most and optimize accordingly.",
+      "See exactly where your spend goes — broken down by model, provider, and team. Donut charts and sortable tables make it easy to optimize.",
     bullets: [
       "Per-model cost breakdown with donut visualization",
       "Sortable model table with token counts",
       "Identify expensive models at a glance",
     ],
-    image: "/dashboard-models.png",
-    imageAlt: "ModelTrack models page showing donut chart and model cost table",
-    layout: "text-right" as const,
+    preview: "models" as const,
+    layout: "text-left" as const,
   },
   {
     icon: Users,
@@ -108,9 +90,8 @@ const screenshotFeatures = [
       "Feature-level cost attribution",
       "Budget enforcement per team",
     ],
-    image: "/dashboard-teams.png",
-    imageAlt: "ModelTrack teams page showing team spend bar chart and table",
-    layout: "text-left" as const,
+    preview: "teams" as const,
+    layout: "text-right" as const,
   },
 ];
 
@@ -437,7 +418,7 @@ export default function Home() {
             </h2>
           </motion.div>
 
-          {/* Screenshot feature rows */}
+          {/* Feature rows with interactive previews */}
           <div className="space-y-24">
             {screenshotFeatures.map((feature, idx) => {
               const Icon = feature.icon;
@@ -476,17 +457,12 @@ export default function Home() {
                     </ul>
                   </div>
 
-                  {/* Screenshot side */}
+                  {/* Preview side */}
                   <div className={`relative ${!isTextLeft ? "lg:col-start-1" : ""}`}>
                     <div className="absolute -inset-4 bg-gradient-to-r from-blue-500/10 via-transparent to-blue-500/10 blur-3xl pointer-events-none" />
-                    <div className="relative rounded-xl border border-white/10 overflow-hidden shadow-2xl shadow-blue-500/5">
-                      <Image
-                        src={feature.image}
-                        alt={feature.imageAlt}
-                        width={1200}
-                        height={800}
-                        className="w-full h-auto"
-                      />
+                    <div className="relative">
+                      {feature.preview === "models" && <ModelsPreview />}
+                      {feature.preview === "teams" && <TeamsPreview />}
                     </div>
                   </div>
                 </motion.div>
