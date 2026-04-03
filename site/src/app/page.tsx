@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import DashboardPreview from "@/components/dashboard-preview";
 import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { NumberTicker } from "@/components/ui/number-ticker";
@@ -351,24 +352,17 @@ export default function Home() {
             </Link>
           </motion.div>
 
-          {/* Hero Dashboard Screenshot */}
+          {/* Hero Interactive Dashboard Preview */}
           <motion.div
             {...staggerImmediate(4)}
             className="mt-16 relative max-w-5xl mx-auto"
           >
-            {/* Glow behind screenshot */}
+            {/* Glow behind preview */}
             <div className="absolute -inset-4 bg-gradient-to-r from-blue-500/10 via-transparent to-blue-500/10 blur-3xl pointer-events-none" />
             <div className="absolute -inset-8 bg-blue-500/[0.04] blur-[60px] rounded-3xl pointer-events-none" />
 
-            <div className="relative rounded-xl border border-white/10 overflow-hidden shadow-2xl shadow-blue-500/5">
-              <Image
-                src="/dashboard-overview.png"
-                alt="ModelTrack Dashboard — overview with cost metrics, trend charts, and model rankings"
-                width={1200}
-                height={800}
-                className="w-full h-auto"
-                priority
-              />
+            <div className="relative">
+              <DashboardPreview />
             </div>
           </motion.div>
         </div>
