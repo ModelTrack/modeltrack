@@ -16,6 +16,7 @@ import Link from "next/link";
 import DashboardPreview from "@/components/dashboard-preview";
 import ModelsPreview from "@/components/models-preview";
 import TeamsPreview from "@/components/teams-preview";
+import CodeTabs from "@/components/code-tabs";
 import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { NumberTicker } from "@/components/ui/number-ticker";
@@ -532,73 +533,7 @@ export default function Home() {
             <div className="absolute -inset-4 rounded-3xl bg-blue-500/[0.04] blur-2xl pointer-events-none" />
             <div className="absolute -inset-8 rounded-3xl bg-indigo-500/[0.02] blur-3xl pointer-events-none" />
 
-            <div className="relative rounded-2xl border border-white/[0.08] bg-[#0c0c14] overflow-hidden">
-              <BorderBeam
-                size={150}
-                duration={10}
-                colorFrom="#3B82F6"
-                colorTo="#818cf8"
-                borderWidth={1}
-              />
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06] bg-white/[0.02]">
-                <div className="size-3 rounded-full bg-red-500/20" />
-                <div className="size-3 rounded-full bg-yellow-500/20" />
-                <div className="size-3 rounded-full bg-green-500/20" />
-                <span className="ml-3 text-xs text-gray-500 font-mono">
-                  app.py
-                </span>
-              </div>
-              <pre className="p-6 text-sm leading-relaxed overflow-x-auto font-mono">
-                <code>
-                  <span className="text-blue-400">import</span>
-                  <span className="text-gray-300"> anthropic</span>
-                  {"\n\n"}
-                  <span className="text-gray-600">
-                    {"# Point your SDK at ModelTrack — everything else stays the same"}
-                  </span>
-                  {"\n"}
-                  <span className="text-gray-300">client = anthropic.</span>
-                  <span className="text-blue-400">Anthropic</span>
-                  <span className="text-gray-300">(</span>
-                  {"\n"}
-                  <span className="text-gray-300">{"    "}base_url=</span>
-                  <span className="text-green-400">
-                    {'"https://proxy.modeltrack.ai/ws/YOUR_WORKSPACE/v1"'}
-                  </span>
-                  {"\n"}
-                  <span className="text-gray-300">)</span>
-                  {"\n\n"}
-                  <span className="text-gray-300">response = client.</span>
-                  <span className="text-yellow-300">messages</span>
-                  <span className="text-gray-300">.</span>
-                  <span className="text-yellow-300">create</span>
-                  <span className="text-gray-300">(</span>
-                  {"\n"}
-                  <span className="text-gray-300">{"    "}model=</span>
-                  <span className="text-green-400">
-                    {'"claude-sonnet-4-6"'}
-                  </span>
-                  <span className="text-gray-300">,</span>
-                  {"\n"}
-                  <span className="text-gray-300">{"    "}messages=[</span>
-                  <span className="text-gray-300">{"{"}</span>
-                  <span className="text-green-400">{'"role"'}</span>
-                  <span className="text-gray-300">: </span>
-                  <span className="text-green-400">{'"user"'}</span>
-                  <span className="text-gray-300">, </span>
-                  <span className="text-green-400">{'"content"'}</span>
-                  <span className="text-gray-300">: </span>
-                  <span className="text-green-400">{'"Hello"'}</span>
-                  <span className="text-gray-300">{"}"}]</span>
-                  {"\n"}
-                  <span className="text-gray-300">)</span>
-                  {"\n"}
-                  <span className="text-gray-600">
-                    {"# ModelTrack tracks: tokens, cost, latency, team, feature"}
-                  </span>
-                </code>
-              </pre>
-            </div>
+            <CodeTabs />
           </motion.div>
 
           <motion.p
